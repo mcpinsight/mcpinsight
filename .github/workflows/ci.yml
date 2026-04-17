@@ -1,0 +1,74 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    name: Lint / Typecheck / Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Test
+        run: pnpm test --coverage
+
+      - name: Coverage gate (packages/core)
+        run: node scripts/coverage-gate.mjs packages/core 80 75
+        if: always()
+
+      - name: Upload coverage artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-${{ github.sha }}
+          path: packages/*/coverage/lcov.info
+          retention-days: 7
+
+  build:
+    name: Build all packages
+    runs-on: ubuntu-latest
+    needs: quality
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - name: Check CLI bundle size
+        run: |
+          SIZE=$(stat -c%s packages/cli/dist/index.js)
+          echo "CLI bundle: $SIZE bytes"
+          if [ $SIZE -gt 512000 ]; then
+            echo "CLI bundle exceeds 500KB budget" >&2
+            exit 1
+          fi
