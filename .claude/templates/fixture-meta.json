@@ -1,0 +1,18 @@
+{
+  "$schema": "../../../.claude/templates/fixture-meta.schema.json",
+  "client": "claude-code",
+  "version": "0.9.2",
+  "recorded_at": "YYYY-MM-DD",
+  "scenario": "short-kebab-case-name",
+  "anonymization": "paths redacted to /work/...; user_id=fixture-NN; tool_result content=redacted",
+  "expected_call_count": 0,
+  "expected_servers": [],
+  "expected_tools_by_server": {
+    "filesystem": ["read", "write"]
+  },
+  "expected_edge_cases": [
+    "is_error: null in compacted session",
+    "sub-agent session_id preserved"
+  ],
+  "notes": "free-form — why this fixture exists, what regression it guards against"
+}
