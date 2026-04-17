@@ -23,37 +23,37 @@ export type Client = 'claude-code' | 'codex' | 'cursor' | 'windsurf' | 'copilot'
  * `cost_is_estimated` is INV-02: 0 = real cost from API key holder, 1 = estimated.
  */
 export interface McpCall {
-  client:            Client;
-  session_id:        SessionId;
-  project_identity:  ProjectIdentity;   // INV-01: git-remote-derived preferred
-  server_name:       string;            // e.g., "filesystem"
-  tool_name:         string;            // e.g., "read" or "browse__search"
-  ts:                number;            // unix ms
-  input_tokens:      number;
-  output_tokens:     number;
+  client: Client;
+  session_id: SessionId;
+  project_identity: ProjectIdentity; // INV-01: git-remote-derived preferred
+  server_name: string; // e.g., "filesystem"
+  tool_name: string; // e.g., "read" or "browse__search"
+  ts: number; // unix ms
+  input_tokens: number;
+  output_tokens: number;
   cache_read_tokens: number;
-  cost_usd:          number;
-  cost_is_estimated: 0 | 1;             // INV-02
-  is_error:          boolean | null;    // null when unknowable
-  duration_ms:       number | null;
+  cost_usd: number;
+  cost_is_estimated: 0 | 1; // INV-02
+  is_error: boolean | null; // null when unknowable
+  duration_ms: number | null;
 }
 
 /**
  * Aggregate row for the daily rollup table. Written by the aggregator, read by queries.
  */
 export interface ServerStatDaily {
-  day:               string;            // ISO date "YYYY-MM-DD"
-  client:            Client;
-  server_name:       string;
-  project_identity:  ProjectIdentity;
-  calls:             number;
-  errors:            number;
-  unique_tools:      number;
-  input_tokens:      number;
-  output_tokens:     number;
+  day: string; // ISO date "YYYY-MM-DD"
+  client: Client;
+  server_name: string;
+  project_identity: ProjectIdentity;
+  calls: number;
+  errors: number;
+  unique_tools: number;
+  input_tokens: number;
+  output_tokens: number;
   cache_read_tokens: number;
-  cost_usd_real:     number;            // only from cost_is_estimated = 0 rows
-  cost_usd_est:      number;            // only from cost_is_estimated = 1 rows
+  cost_usd_real: number; // only from cost_is_estimated = 0 rows
+  cost_usd_est: number; // only from cost_is_estimated = 1 rows
 }
 
 /**
@@ -61,16 +61,16 @@ export interface ServerStatDaily {
  * `score = null` when insufficient data (<14 days history or <50 total calls).
  */
 export interface ServerHealth {
-  server_name:       string;
-  score:             number | null;       // 0-100 or null
+  server_name: string;
+  score: number | null; // 0-100 or null
   components: {
-    activation:      number;              // 0-1
-    successRate:     number;              // 0-1
-    toolUtil:        number;              // 0-1
-    clarity:         number;              // 0-1 (1 - confusion)
-    tokenEff:        number;              // 0-1
-  } | null;                               // null when score is null
-  is_essential:      boolean;             // true = floor score at 50
+    activation: number; // 0-1
+    successRate: number; // 0-1
+    toolUtil: number; // 0-1
+    clarity: number; // 0-1 (1 - confusion)
+    tokenEff: number; // 0-1
+  } | null; // null when score is null
+  is_essential: boolean; // true = floor score at 50
   insufficient_data_reason?: 'too_recent' | 'too_few_calls';
 }
 
@@ -111,9 +111,7 @@ export interface NormalizeContext {
  * Result<T, E>: preferred over throw for expected failures (malformed JSONL, missing files).
  * See skills/backend-node.md.
  */
-export type Result<T, E> =
-  | { ok: true;  value: T }
-  | { ok: false; error: E };
+export type Result<T, E> = { ok: true; value: T } | { ok: false; error: E };
 
-export const ok  = <T>(value: T): Result<T, never>  => ({ ok: true,  value });
-export const err = <E>(error: E): Result<never, E>  => ({ ok: false, error });
+export const ok = <T>(value: T): Result<T, never> => ({ ok: true, value });
+export const err = <E>(error: E): Result<never, E> => ({ ok: false, error });

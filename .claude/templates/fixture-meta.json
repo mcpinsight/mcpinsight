@@ -10,9 +10,6 @@
   "expected_tools_by_server": {
     "filesystem": ["read", "write"]
   },
-  "expected_edge_cases": [
-    "is_error: null in compacted session",
-    "sub-agent session_id preserved"
-  ],
+  "expected_edge_cases": ["is_error: null in compacted session", "sub-agent session_id preserved"],
   "notes": "free-form — why this fixture exists, what regression it guards against"
 }
