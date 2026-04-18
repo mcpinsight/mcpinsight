@@ -344,6 +344,49 @@ describe('pairEvents', () => {
     expect(byId.get('u1')?.usage).not.toBeNull();
     expect(byId.get('u2')?.usage).toBeNull();
   });
+
+  it('emits both calls when the same tool_use_id is reused within a session', () => {
+    const use1 = parseLine(
+      assistantLine('s1', '2026-04-10T10:00:00.000Z', [{ id: 'u-dup', name: 'mcp__a__first' }]),
+    );
+    const use2 = parseLine(
+      assistantLine('s1', '2026-04-10T10:00:05.000Z', [{ id: 'u-dup', name: 'mcp__a__second' }]),
+    );
+    const result = parseLine(
+      userToolResultLine('s1', '2026-04-10T10:00:05.500Z', [
+        { toolUseId: 'u-dup', isError: false },
+      ]),
+    );
+    if (!use1 || !use2 || !result) throw new Error('unexpected null');
+    const paired = pairEvents([use1, use2, result]);
+    expect(paired).toHaveLength(2);
+    const byTool = new Map(paired.map((p) => [p.toolName, p]));
+    // First was overwritten by second; must surface with result=null (not silently dropped).
+    expect(byTool.get('mcp__a__first')?.result).toBeNull();
+    // Second pairs with the incoming tool_result.
+    expect(byTool.get('mcp__a__second')?.result?.isError).toBe(false);
+  });
+
+  it('pairs multiple tool_results in a single user message line', () => {
+    const use = parseLine(
+      assistantLine('s1', '2026-04-10T10:00:00.000Z', [
+        { id: 'u1', name: 'mcp__a__one' },
+        { id: 'u2', name: 'mcp__a__two' },
+      ]),
+    );
+    const result = parseLine(
+      userToolResultLine('s1', '2026-04-10T10:00:00.500Z', [
+        { toolUseId: 'u1', isError: false },
+        { toolUseId: 'u2', isError: true },
+      ]),
+    );
+    if (!use || !result) throw new Error('unexpected null');
+    const paired = pairEvents([use, result]);
+    expect(paired).toHaveLength(2);
+    const byId = new Map(paired.map((p) => [p.toolUseId, p]));
+    expect(byId.get('u1')?.result?.isError).toBe(false);
+    expect(byId.get('u2')?.result?.isError).toBe(true);
+  });
 });
 
 describe('ClaudeCodeParser interface compliance', () => {

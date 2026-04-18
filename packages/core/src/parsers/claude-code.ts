@@ -194,6 +194,14 @@ export function pairEvents(events: Iterable<ClaudeCodeLineEvent>): ClaudeCodeRaw
     if (event.kind === 'tool_use') {
       const session = getOrCreateSession(event.sessionId);
       for (const [idx, toolUse] of event.toolUses.entries()) {
+        // Duplicate tool_use_id within a session (rare: retry or compacted
+        // long-session replay). Surface the stale pending with result: null
+        // before overwriting so we never silently drop a tool_use — same
+        // signal we use for unpaired suffixes at end of scan.
+        const existing = session.get(toolUse.id);
+        if (existing) {
+          out.push({ ...existing, result: null });
+        }
         session.set(toolUse.id, {
           sessionId: event.sessionId,
           toolUseId: toolUse.id,
