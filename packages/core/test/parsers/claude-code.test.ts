@@ -4,14 +4,9 @@ import { join } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
-import {
-  ClaudeCodeParser,
-  defaultLogPaths,
-  discoverSessionFiles,
-  pairEvents,
-  parseLine,
-  readJsonlLines,
-} from '../../src/parsers/claude-code.js';
+import { ClaudeCodeParser, pairEvents, parseLine } from '../../src/parsers/claude-code.js';
+import { claudeCodeDefaultLogPaths, readJsonlLines } from '../../src/util/io.js';
+import { discoverSessionFiles } from '../../src/util/paths.js';
 
 function assistantLine(
   sessionId: string,
@@ -397,7 +392,7 @@ describe('ClaudeCodeParser interface compliance', () => {
 
   it('defaultLogPaths returns ~/.claude/projects on macOS/Linux', () => {
     if (process.platform === 'win32') return;
-    const paths = defaultLogPaths();
+    const paths = claudeCodeDefaultLogPaths();
     expect(paths).toHaveLength(1);
     expect(paths[0]?.endsWith('.claude/projects')).toBe(true);
   });

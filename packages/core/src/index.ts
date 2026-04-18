@@ -5,11 +5,8 @@ export {
   CLAUDE_CODE_CLIENT,
   CLAUDE_CODE_PARSER_VERSION,
   ClaudeCodeParser,
-  defaultLogPaths as defaultClaudeCodeLogPaths,
-  discoverSessionFiles,
   pairEvents as pairClaudeCodeEvents,
   parseLine as parseClaudeCodeLine,
-  readJsonlLines,
 } from './parsers/claude-code.js';
 export type {
   ClaudeCodeLineEvent,
@@ -19,3 +16,8 @@ export type {
   ClaudeCodeUsage,
 } from './parsers/claude-code.js';
 export { ClaudeCodeNormalizer } from './normalizers/claude-code.js';
+export { discoverSessionFiles, expandHome } from './util/paths.js';
+export {
+  claudeCodeDefaultLogPaths as defaultClaudeCodeLogPaths,
+  readJsonlLines,
+} from './util/io.js';

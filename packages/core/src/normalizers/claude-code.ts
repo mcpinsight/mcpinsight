@@ -33,6 +33,7 @@ export const ClaudeCodeNormalizer: ClientNormalizer<ClaudeCodeRawEvent> = {
       output_tokens: usage?.output_tokens ?? 0,
       cache_read_tokens: usage?.cache_read_input_tokens ?? 0,
       cost_usd: 0,
+      // TODO(week4): drive cost_is_estimated from ctx.hasApiKey
       cost_is_estimated: 1,
       is_error: raw.result?.isError ?? null,
       duration_ms: raw.result ? raw.result.tsMs - raw.tsMs : null,

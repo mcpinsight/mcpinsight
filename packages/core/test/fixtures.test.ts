@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 import { ClaudeCodeNormalizer } from '../src/normalizers/claude-code.js';
+import type { ClaudeCodeRawEvent } from '../src/parsers/claude-code.js';
 import { pairEvents, parseLine } from '../src/parsers/claude-code.js';
 import { asProjectIdentity } from '../src/types/brands.js';
 import type { McpCall } from '../src/types/canonical.js';
@@ -19,6 +20,8 @@ interface FixtureMeta {
   expected_tools: string[];
   expected_errors: number;
   expected_null_is_error_count?: number;
+  expected_null_duration_count?: number;
+  expected_sidechain_count?: number;
 }
 
 async function listDirFiles(root: string): Promise<string[]> {
@@ -44,7 +47,9 @@ async function loadFixtures(): Promise<Array<{ meta: FixtureMeta; jsonlPath: str
   return loaded;
 }
 
-async function runFixture(jsonlPath: string): Promise<McpCall[]> {
+async function runFixture(
+  jsonlPath: string,
+): Promise<{ calls: McpCall[]; paired: ClaudeCodeRawEvent[] }> {
   const text = await readFile(jsonlPath, 'utf-8');
   const lines = text.split(/\r?\n/);
   const events = [];
@@ -59,7 +64,7 @@ async function runFixture(jsonlPath: string): Promise<McpCall[]> {
     const call = ClaudeCodeNormalizer.normalize(raw, ctx);
     if (call !== null) calls.push(call);
   }
-  return calls;
+  return { calls, paired };
 }
 
 describe('fixtures/claude-code', () => {
@@ -77,7 +82,7 @@ describe('fixtures/claude-code', () => {
     const fixtures = await loadFixtures();
     expect(fixtures.length).toBeGreaterThanOrEqual(3);
     for (const { meta, jsonlPath } of fixtures) {
-      const calls = await runFixture(jsonlPath);
+      const { calls, paired } = await runFixture(jsonlPath);
       expect(calls, `${meta.scenario}: expected_call_count`).toHaveLength(meta.expected_call_count);
 
       const servers = [...new Set(calls.map((c) => c.server_name))].sort();
@@ -96,6 +101,26 @@ describe('fixtures/claude-code', () => {
         expect(nulls, `${meta.scenario}: expected_null_is_error_count`).toBe(
           meta.expected_null_is_error_count,
         );
+      }
+
+      if (typeof meta.expected_null_duration_count === 'number') {
+        const nulls = calls.filter((c) => c.duration_ms === null).length;
+        expect(nulls, `${meta.scenario}: expected_null_duration_count`).toBe(
+          meta.expected_null_duration_count,
+        );
+      }
+
+      if (typeof meta.expected_sidechain_count === 'number') {
+        // `isSidechain` lives on the paired raw event; `McpCall` does not carry
+        // it (canonical shape frozen by INV-06). Assert pre-normalization.
+        const mcpToolUseIds = new Set(calls.map((c) => `${c.session_id}:${c.tool_name}`));
+        const sidechainPaired = paired.filter((p) => p.isSidechain).length;
+        expect(sidechainPaired, `${meta.scenario}: expected_sidechain_count (paired)`).toBe(
+          meta.expected_sidechain_count,
+        );
+        // Sanity: none of the sidechain raw events should have been dropped by
+        // the normalizer (MCP tools all carry through).
+        expect(mcpToolUseIds.size).toBeGreaterThan(0);
       }
     }
   });

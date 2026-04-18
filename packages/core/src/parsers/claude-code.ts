@@ -1,8 +1,5 @@
-import { createReadStream } from 'node:fs';
-import { createInterface } from 'node:readline';
-
 import type { Client, ClientParser } from '../types/canonical.js';
-import { discoverSessionFiles, expandHome } from '../util/paths.js';
+import { claudeCodeDefaultLogPaths } from '../util/io.js';
 
 export const CLAUDE_CODE_CLIENT: Client = 'claude-code';
 export const CLAUDE_CODE_PARSER_VERSION = 1;
@@ -87,6 +84,24 @@ function parseUsage(raw: unknown): ClaudeCodeUsage | null {
   };
 }
 
+/** Extract tool_result blocks from a `type:'user'` message.content array. */
+function extractResults(
+  content: unknown[],
+  sessionId: string,
+  tsMs: number,
+): ClaudeCodeToolResultLine | null {
+  const results: Array<{ toolUseId: string; isError: boolean | null }> = [];
+  for (const block of content) {
+    if (!isRecord(block)) continue;
+    if (block.type !== 'tool_result') continue;
+    const toolUseId = asString(block.tool_use_id);
+    if (toolUseId === null) continue;
+    results.push({ toolUseId, isError: asBooleanOrNull(block.is_error) });
+  }
+  if (results.length === 0) return null;
+  return { kind: 'tool_result', sessionId, tsMs, results };
+}
+
 /**
  * Parse a single JSONL line from a Claude Code session file.
  *
@@ -150,17 +165,7 @@ export function parseLine(line: string): ClaudeCodeLineEvent | null {
     };
   }
 
-  // type === 'user': search content for tool_result blocks.
-  const results: Array<{ toolUseId: string; isError: boolean | null }> = [];
-  for (const block of content) {
-    if (!isRecord(block)) continue;
-    if (block.type !== 'tool_result') continue;
-    const toolUseId = asString(block.tool_use_id);
-    if (toolUseId === null) continue;
-    results.push({ toolUseId, isError: asBooleanOrNull(block.is_error) });
-  }
-  if (results.length === 0) return null;
-  return { kind: 'tool_result', sessionId, tsMs, results };
+  return extractResults(content, sessionId, tsMs);
 }
 
 /**
@@ -234,30 +239,9 @@ export function pairEvents(events: Iterable<ClaudeCodeLineEvent>): ClaudeCodeRaw
   return out;
 }
 
-/**
- * Async generator yielding lines from a JSONL file. Accepts an optional byte
- * offset so callers can implement incremental scans (Day 13 scan_state).
- */
-export async function* readJsonlLines(path: string, startByte = 0): AsyncGenerator<string> {
-  const stream = createReadStream(path, { start: startByte, encoding: 'utf-8' });
-  const rl = createInterface({ input: stream, crlfDelay: Number.POSITIVE_INFINITY });
-  for await (const line of rl) yield line;
-}
-
-/**
- * OS-specific default log paths for Claude Code. Returns empty on Windows
- * for MVP — Windows support deferred until a Windows user reports it.
- */
-export function defaultLogPaths(): string[] {
-  if (process.platform === 'win32') return [];
-  return [expandHome('~/.claude/projects')];
-}
-
 export const ClaudeCodeParser: ClientParser<ClaudeCodeLineEvent> = {
   client: CLAUDE_CODE_CLIENT,
   version: CLAUDE_CODE_PARSER_VERSION,
   parseLine,
-  defaultLogPaths,
+  defaultLogPaths: claudeCodeDefaultLogPaths,
 };
-
-export { discoverSessionFiles };
