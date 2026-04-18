@@ -1,0 +1,170 @@
+---
+// biome-ignore lint/correctness/noUnusedImports: used in Astro template below
+import BuildInPublic from '../components/BuildInPublic.astro';
+// biome-ignore lint/correctness/noUnusedImports: used in Astro template below
+import FeatureCard from '../components/FeatureCard.astro';
+// biome-ignore lint/correctness/noUnusedImports: used in Astro template below
+import Hero from '../components/Hero.astro';
+// biome-ignore lint/correctness/noUnusedImports: used in Astro template below
+import Nav from '../components/Nav.astro';
+// biome-ignore lint/correctness/noUnusedImports: used in Astro template below
+import ProblemCard from '../components/ProblemCard.astro';
+// biome-ignore lint/correctness/noUnusedImports: used in Astro template below
+import { copy } from '../copy/en.ts';
+
+// biome-ignore lint/correctness/noUnusedVariables: referenced in Astro template below
+const siteUrl = 'https://mcpinsight.dev';
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="canonical" href={siteUrl} />
+
+    <title>{copy.meta.title}</title>
+    <meta name="description" content={copy.meta.description} />
+
+    <!-- Open Graph -->
+    <meta property="og:title" content={copy.meta.title} />
+    <meta property="og:description" content={copy.meta.description} />
+    <meta property="og:url" content={siteUrl} />
+    <meta property="og:type" content="website" />
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content={copy.meta.title} />
+    <meta name="twitter:description" content={copy.meta.description} />
+
+    <!-- Inter webfont (CDN for Day 10; self-host later) -->
+    <link rel="preconnect" href="https://rsms.me/" />
+    <link rel="stylesheet" href="https://rsms.me/inter/inter.css" />
+  </head>
+
+  <body class="min-h-screen bg-slate-50 font-sans text-slate-900 antialiased">
+    <Nav />
+
+    <main>
+      <Hero />
+
+      <!-- Problem -->
+      <section class="mx-auto max-w-5xl px-6 py-20 sm:py-24">
+        <div class="mx-auto max-w-2xl text-center">
+          <p class="text-xs font-medium uppercase tracking-[0.12em] text-slate-500">
+            {copy.problem.sectionLabel}
+          </p>
+          <h2
+            class="mt-3 text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl lg:text-5xl"
+          >
+            {copy.problem.heading}
+          </h2>
+        </div>
+        <div class="mt-12 grid gap-6 md:grid-cols-3 md:gap-8">
+          {
+            copy.problem.cards.map((body, idx) => (
+              <ProblemCard index={idx + 1} body={body} />
+            ))
+          }
+        </div>
+      </section>
+
+      <!-- Solution -->
+      <section class="bg-white">
+        <div class="mx-auto max-w-5xl px-6 py-20 sm:py-24">
+          <div class="mx-auto max-w-2xl text-center">
+            <p class="text-xs font-medium uppercase tracking-[0.12em] text-slate-500">
+              {copy.solution.sectionLabel}
+            </p>
+            <h2
+              class="mt-3 text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl lg:text-5xl"
+            >
+              {copy.solution.heading}
+            </h2>
+          </div>
+          <div class="mt-12 grid gap-6 md:grid-cols-2 md:gap-8 lg:grid-cols-4">
+            {
+              copy.solution.cards.map((card) => (
+                <FeatureCard title={card.title} body={card.body} />
+              ))
+            }
+          </div>
+          <p class="mt-10 text-center">
+            <span
+              class="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-4 py-1.5 text-sm font-medium text-slate-600"
+            >
+              <span aria-hidden="true" class="h-2 w-2 rounded-full bg-emerald-500"></span>
+              {copy.solution.localityNote}
+            </span>
+          </p>
+        </div>
+      </section>
+
+      <!-- Build in public -->
+      <BuildInPublic />
+
+      <!-- Share CTA (replaces secondary waitlist form; email capture is hero-only) -->
+      <section class="bg-white">
+        <div class="mx-auto max-w-3xl px-6 py-20 text-center sm:py-24">
+          <h2
+            class="text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl lg:text-5xl"
+          >
+            {copy.shareSection.heading}
+          </h2>
+          <p class="mt-6 text-lg text-slate-600">
+            {copy.shareSection.subhead}
+          </p>
+          <div
+            class="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row sm:gap-4"
+          >
+            <a
+              href={copy.footer.links.github.href}
+              target="_blank"
+              rel="noopener noreferrer"
+              class="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-6 py-3.5 text-base font-semibold text-slate-900 shadow-sm transition hover:border-slate-400 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 focus-visible:ring-offset-2 sm:w-auto sm:py-4"
+            >
+              <span aria-hidden="true">★</span>
+              {copy.shareSection.githubCtaLabel}
+            </a>
+            <a
+              href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(copy.shareSection.twitterText)}&url=${encodeURIComponent(copy.shareSection.twitterUrl)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              class="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-slate-900 px-6 py-3.5 text-base font-semibold text-white shadow-sm transition hover:bg-slate-800 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/50 focus-visible:ring-offset-2 sm:w-auto sm:py-4"
+            >
+              {copy.shareSection.twitterCtaLabel}
+            </a>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="border-t border-slate-200 bg-white">
+      <div
+        class="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-6 py-8 text-sm text-slate-500 sm:flex-row"
+      >
+        <p>{copy.footer.tagline}</p>
+        <nav class="flex items-center gap-6">
+          <a
+            href={copy.footer.links.github.href}
+            rel="noopener noreferrer"
+            target="_blank"
+            class="rounded-sm transition hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 focus-visible:ring-offset-2"
+          >
+            {copy.footer.links.github.label}
+          </a>
+          <a
+            href={copy.footer.links.twitter.href}
+            rel="noopener noreferrer"
+            target="_blank"
+            class="rounded-sm transition hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 focus-visible:ring-offset-2"
+          >
+            {copy.footer.links.twitter.label}
+          </a>
+        </nav>
+        <p>{copy.footer.copyright}</p>
+      </div>
+    </footer>
+  </body>
+</html>

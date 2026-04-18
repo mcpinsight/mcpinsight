@@ -1,0 +1,17 @@
+---
+// biome-ignore lint/correctness/noUnusedVariables: Props is referenced by Astro compiler
+interface Props {
+  title: string;
+  body: string;
+}
+
+// biome-ignore lint/correctness/noUnusedVariables: title and body are used in the Astro template below
+const { title, body } = Astro.props;
+---
+
+<article
+  class="rounded-lg border border-slate-200 bg-white p-6 shadow-sm transition hover:border-brand/40 hover:shadow-md"
+>
+  <h3 class="text-lg font-semibold text-slate-900">{title}</h3>
+  <p class="mt-3 text-sm leading-relaxed text-slate-600">{body}</p>
+</article>

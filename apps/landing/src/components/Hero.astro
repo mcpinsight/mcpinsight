@@ -1,0 +1,50 @@
+---
+// biome-ignore lint/correctness/noUnusedImports: used in Astro template below
+import { copy } from '../copy/en.ts';
+// biome-ignore lint/correctness/noUnusedImports: used in Astro template below
+import TerminalMockup from './TerminalMockup.astro';
+// biome-ignore lint/correctness/noUnusedImports: used in Astro template below
+import WaitlistForm from './WaitlistForm.astro';
+---
+
+<section class="relative overflow-hidden">
+  <div
+    class="pointer-events-none absolute inset-x-0 top-0 h-[720px] bg-[radial-gradient(ellipse_at_top,theme(colors.indigo.100)_0%,transparent_60%)]"
+    aria-hidden="true"
+  >
+  </div>
+  <div
+    class="relative mx-auto max-w-3xl px-6 pt-16 pb-20 text-center sm:pt-20 sm:pb-24 lg:pt-24 lg:pb-28"
+  >
+    <p
+      class="inline-block rounded-full border border-brand/20 bg-indigo-50 px-4 py-1.5 text-xs font-medium uppercase tracking-[0.12em] text-brand"
+    >
+      {copy.hero.eyebrow}
+    </p>
+    <h1
+      class="mt-6 text-4xl font-semibold tracking-tight text-slate-900 sm:text-6xl lg:text-7xl"
+    >
+      {copy.hero.headline}
+    </h1>
+    <p class="mt-6 text-lg leading-relaxed text-slate-600 sm:text-xl">
+      {copy.hero.subhead}
+    </p>
+    <div id="waitlist" class="mt-10 scroll-mt-24">
+      <WaitlistForm formId="wf-hero" />
+    </div>
+    <div class="mt-8">
+      <a
+        href={copy.footer.links.github.href}
+        target="_blank"
+        rel="noopener noreferrer"
+        class="inline-flex items-center gap-1.5 rounded-sm text-sm font-medium text-slate-500 transition hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 focus-visible:ring-offset-2"
+      >
+        {copy.hero.proofLinkLabel}
+        <span aria-hidden="true">→</span>
+      </a>
+    </div>
+    <div class="mt-16 hidden md:block">
+      <TerminalMockup />
+    </div>
+  </div>
+</section>

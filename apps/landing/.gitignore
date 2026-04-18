@@ -1,0 +1,3 @@
+# Astro regenerates src/env.d.ts on every `astro sync` / `astro build`.
+# Root .gitignore already ignores `.astro/`, `dist/`, and `.wrangler/`.
+src/env.d.ts
