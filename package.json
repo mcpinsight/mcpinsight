@@ -16,6 +16,7 @@
     "format": "biome format --write .",
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm -r test",
+    "cli": "pnpm --filter @mcpinsight/cli start",
     "test:fixtures": "pnpm --filter @mcpinsight/core test:fixtures",
     "test:e2e": "playwright test",
     "coverage": "pnpm -r coverage",
