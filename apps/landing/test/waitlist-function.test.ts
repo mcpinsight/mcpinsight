@@ -145,7 +145,7 @@ describe('POST /api/waitlist', () => {
     );
 
     expect(res.status).toBe(500);
-    expect(await res.json()).toEqual({ ok: false, error: 'server_misconfigured' });
+    expect(await res.json()).toMatchObject({ ok: false, error: 'server_misconfigured' });
     expect(fetchMock).not.toHaveBeenCalled();
   });
 

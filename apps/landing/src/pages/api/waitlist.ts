@@ -112,9 +112,21 @@ export const POST: APIRoute = async ({ request, locals }) => {
 
   const env = extractEnv(locals);
   if (!env) {
+    // TEMPORARY DEBUG — revert after verifying env shape in production
+    const l = locals as { runtime?: { env?: Record<string, unknown> } } | null;
+    const hasLocals = typeof l === 'object' && l !== null;
+    const hasRuntime = hasLocals && typeof l?.runtime === 'object' && l.runtime !== null;
+    const runtimeKeys = hasRuntime && l?.runtime ? Object.keys(l.runtime).sort() : [];
+    const envKeys = hasRuntime && l?.runtime?.env ? Object.keys(l.runtime.env).sort() : [];
     // biome-ignore lint/suspicious/noConsoleLog: pages function observability
-    console.log(JSON.stringify({ event: 'waitlist.server_misconfigured' }));
-    return jsonResponse(500, { ok: false, error: 'server_misconfigured' });
+    console.log(
+      JSON.stringify({ event: 'waitlist.server_misconfigured', hasRuntime, runtimeKeys, envKeys }),
+    );
+    return jsonResponse(500, {
+      ok: false,
+      error: 'server_misconfigured',
+      debug: { hasLocals, hasRuntime, runtimeKeys, envKeys },
+    });
   }
 
   const emailHash = await hashEmailPrefix(email);
