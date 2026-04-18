@@ -1,0 +1,50 @@
+---
+// biome-ignore lint/correctness/noUnusedImports: used in Astro template below
+import { copy } from '../copy/en.ts';
+---
+
+<section class="bg-slate-50">
+  <div class="mx-auto max-w-5xl px-6 py-20 sm:py-24">
+    <div class="mx-auto max-w-2xl text-center">
+      <p class="text-xs font-medium uppercase tracking-[0.12em] text-slate-500">
+        {copy.buildInPublic.sectionLabel}
+      </p>
+      <h2
+        class="mt-3 text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl lg:text-5xl"
+      >
+        {copy.buildInPublic.heading}
+      </h2>
+      <p class="mt-6 text-lg leading-relaxed text-slate-600">
+        {copy.buildInPublic.subhead}
+      </p>
+    </div>
+
+    <div class="mt-12 grid gap-4 sm:grid-cols-3">
+      {
+        copy.buildInPublic.roadmap.map((item) => (
+          <div
+            class:list={[
+              'rounded-lg border p-5 transition',
+              item.status === 'current'
+                ? 'border-brand/40 bg-indigo-50 shadow-sm'
+                : 'border-slate-200 bg-white',
+            ]}
+          >
+            <div class="flex items-center gap-2">
+              <span class="font-mono text-xs font-semibold uppercase tracking-wider text-slate-500">
+                {item.week}
+              </span>
+              {item.status === 'current' && (
+                <span class="inline-flex items-center rounded-full bg-brand px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white">
+                  Now
+                </span>
+              )}
+            </div>
+            <p class="mt-2 text-base font-medium text-slate-900">{item.title}</p>
+          </div>
+        ))
+      }
+    </div>
+
+  </div>
+</section>

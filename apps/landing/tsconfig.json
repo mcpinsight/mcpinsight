@@ -1,0 +1,12 @@
+{
+  "extends": ["astro/tsconfigs/strict", "../../tsconfig.base.json"],
+  "compilerOptions": {
+    "composite": false,
+    "declaration": false,
+    "declarationMap": false,
+    "sourceMap": false,
+    "types": ["astro/client", "@cloudflare/workers-types"]
+  },
+  "include": [".astro/types.d.ts", "**/*", "functions/**/*", "test/**/*"],
+  "exclude": ["dist", ".astro"]
+}

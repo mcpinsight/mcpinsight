@@ -2,7 +2,15 @@
   "$schema": "https://biomejs.dev/schemas/1.8.3/schema.json",
   "organizeImports": { "enabled": true },
   "files": {
-    "ignore": ["dist", "coverage", ".wrangler", "packages/*/fixtures/**"]
+    "ignore": [
+      "dist",
+      "coverage",
+      ".wrangler",
+      ".astro",
+      "**/.astro/**",
+      "apps/*/src/env.d.ts",
+      "packages/*/fixtures/**"
+    ]
   },
   "linter": {
     "enabled": true,

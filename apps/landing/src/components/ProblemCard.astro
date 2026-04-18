@@ -1,0 +1,25 @@
+---
+// biome-ignore lint/correctness/noUnusedVariables: Props is referenced by Astro compiler
+interface Props {
+  index: number;
+  body: string;
+}
+
+// biome-ignore lint/correctness/noUnusedVariables: index and body are used in the Astro template below
+const { index, body } = Astro.props;
+// biome-ignore lint/correctness/noUnusedVariables: referenced in Astro template below
+const indexLabel = index.toString().padStart(2, '0');
+---
+
+<article
+  class="rounded-lg border border-slate-200 bg-white p-6 shadow-sm transition hover:border-slate-300 hover:shadow-md"
+>
+  <span
+    class="inline-flex items-center justify-center rounded-md bg-slate-900 px-2 py-0.5 font-mono text-xs font-semibold text-slate-50"
+  >
+    {indexLabel}
+  </span>
+  <p class="mt-4 text-base leading-relaxed text-slate-800">
+    {body}
+  </p>
+</article>

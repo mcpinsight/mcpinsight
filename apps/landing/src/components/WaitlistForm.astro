@@ -1,0 +1,142 @@
+---
+// biome-ignore lint/correctness/noUnusedImports: used in Astro template below
+import { copy } from '../copy/en.ts';
+
+// biome-ignore lint/correctness/noUnusedVariables: Props is referenced by Astro compiler
+interface Props {
+  formId?: string;
+}
+
+const { formId = 'waitlist-form' } = Astro.props;
+// biome-ignore lint/correctness/noUnusedVariables: referenced in Astro template below
+const mainId = `${formId}-main`;
+// biome-ignore lint/correctness/noUnusedVariables: referenced in Astro template below
+const successId = `${formId}-success`;
+// biome-ignore lint/correctness/noUnusedVariables: referenced in Astro template below
+const errorId = `${formId}-error`;
+---
+
+<div class="mx-auto w-full max-w-xl">
+  <div id={mainId}>
+    <form
+      id={formId}
+      method="post"
+      action="/api/waitlist"
+      class="flex flex-col gap-3 sm:flex-row sm:gap-2"
+    >
+      <label for={`${formId}-email`} class="sr-only">{copy.waitlist.emailLabel}</label>
+      <input
+        id={`${formId}-email`}
+        type="email"
+        name="email"
+        required
+        maxlength="254"
+        autocomplete="email"
+        placeholder={copy.waitlist.emailPlaceholder}
+        class="flex-1 rounded-lg border border-slate-300 bg-white px-4 py-3.5 text-base text-slate-900 placeholder-slate-500 shadow-sm focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/20 sm:py-4"
+      />
+      <!-- Honeypot: real humans never fill this. Bots do. -->
+      <input
+        type="text"
+        name="website"
+        tabindex="-1"
+        autocomplete="off"
+        aria-hidden="true"
+        style="position:absolute;left:-9999px"
+      />
+      <button
+        type="submit"
+        class="inline-flex items-center justify-center rounded-lg bg-brand px-6 py-3.5 text-base font-semibold text-white shadow-sm transition hover:bg-brand-dark hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/50 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-500 disabled:shadow-none sm:py-4"
+      >
+        {copy.waitlist.submit}
+      </button>
+    </form>
+
+    <p class="mt-3 text-center text-xs text-slate-500 sm:text-left">
+      {copy.waitlist.privacy}
+    </p>
+  </div>
+
+  <div
+    id={successId}
+    hidden
+    class="mt-6 rounded-lg border border-emerald-200 bg-emerald-50 p-5 text-center"
+  >
+    <p class="text-lg font-semibold text-emerald-900">{copy.waitlist.successHeading}</p>
+    <p class="mt-2 text-sm text-emerald-800">{copy.waitlist.successBody}</p>
+  </div>
+
+  <div
+    id={errorId}
+    hidden
+    role="alert"
+    class="mt-4 rounded-lg border border-rose-200 bg-rose-50 p-4 text-center text-sm text-rose-800"
+  >
+  </div>
+</div>
+
+<script
+  is:inline
+  define:vars={{
+    formId,
+    mainId,
+    successId,
+    errorId,
+    errorInvalid: copy.waitlist.errorInvalid,
+    errorGeneric: copy.waitlist.errorGeneric,
+  }}
+>
+  (function () {
+    const form = document.getElementById(formId);
+    const main = document.getElementById(mainId);
+    const success = document.getElementById(successId);
+    const errorBox = document.getElementById(errorId);
+    if (!form || !main || !success || !errorBox) return;
+
+    const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const showError = (msg) => {
+      errorBox.textContent = msg;
+      errorBox.hidden = false;
+    };
+    const clearError = () => {
+      errorBox.textContent = '';
+      errorBox.hidden = true;
+    };
+
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      clearError();
+
+      const emailInput = form.querySelector('input[name="email"]');
+      const honeypot = form.querySelector('input[name="website"]');
+      const submitBtn = form.querySelector('button[type="submit"]');
+      const email = (emailInput && emailInput.value ? emailInput.value : '').trim();
+      const website = honeypot && honeypot.value ? honeypot.value : '';
+
+      if (!email || !emailRe.test(email)) {
+        showError(errorInvalid);
+        return;
+      }
+
+      if (submitBtn) submitBtn.disabled = true;
+
+      try {
+        const res = await fetch('/api/waitlist', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+          body: JSON.stringify({ email, website }),
+        });
+        if (!res.ok) {
+          showError(errorGeneric);
+          if (submitBtn) submitBtn.disabled = false;
+          return;
+        }
+        main.hidden = true;
+        success.hidden = false;
+      } catch {
+        showError(errorGeneric);
+        if (submitBtn) submitBtn.disabled = false;
+      }
+    });
+  })();
+</script>
