@@ -1,10 +1,17 @@
+import { stat } from 'node:fs/promises';
+import { homedir } from 'node:os';
+import { join } from 'node:path';
+
 import type { Command } from 'commander';
 
 import {
   ClaudeCodeNormalizer,
   ClaudeCodeParser,
-  asProjectIdentity,
+  createQueries,
   discoverSessionFiles,
+  getProjectIdentity,
+  ingestCalls,
+  openDb,
   pairClaudeCodeEvents,
   parseClaudeCodeLine,
   readJsonlLines,
@@ -15,27 +22,36 @@ interface ScanOptions {
   print?: boolean;
   path: string[];
   limit?: number;
+  db?: string;
 }
 
-/**
- * Day 12 CLI entrypoint. No DB yet — emits McpCall[] as JSON. Day 13 replaces
- * `--print` with aggregator persistence.
- */
+const CLIENT = 'claude-code';
+
+/** Default DB path — ~/.mcpinsight/data.db. */
+function defaultDbPath(): string {
+  return join(homedir(), '.mcpinsight', 'data.db');
+}
+
 export function registerScanCommand(program: Command): void {
   program
     .command('scan')
     .description(
-      'Parse Claude Code session logs and extract MCP tool calls (INV-05: no DB write, Day 13 adds persistence).',
+      'Parse Claude Code session logs, normalize MCP tool calls, ingest to SQLite (INV-01/04/05).',
     )
-    .option('--print', 'Emit the extracted calls as JSON to stdout (default for Day 12)', true)
+    .option('--print', 'Emit the extracted calls as JSON to stdout (skips DB write)', false)
     .option('--path <path>', 'Override log root (repeatable)', collect, [] as string[])
     .option('--limit <n>', 'Cap emitted calls (useful on large local log corpora)', parseIntArg)
+    .option('--db <path>', 'Override SQLite path (default: ~/.mcpinsight/data.db)')
     .action(runScan);
 }
 
 async function runScan(options: ScanOptions): Promise<void> {
-  const roots: string[] =
-    options.path.length > 0 ? options.path : ClaudeCodeParser.defaultLogPaths();
+  const roots = options.path.length > 0 ? options.path : ClaudeCodeParser.defaultLogPaths();
+  const identity = getProjectIdentity(process.cwd());
+  const ctx: NormalizeContext = { projectIdentity: identity.identity, hasApiKey: false };
+  const limit = options.limit;
+
+  process.stderr.write(`project_identity: ${identity.identity} (source=${identity.source})\n`);
 
   const allFiles: string[] = [];
   for (const root of roots) {
@@ -43,48 +59,110 @@ async function runScan(options: ScanOptions): Promise<void> {
     allFiles.push(...found);
   }
 
-  const ctx: NormalizeContext = {
-    projectIdentity: asProjectIdentity('unresolved-day-12'),
-    hasApiKey: false,
-  };
+  const useDb = !options.print;
+  const dbHandle = useDb ? openDb({ path: options.db ?? defaultDbPath() }) : null;
+  const queries = dbHandle ? createQueries(dbHandle.db) : null;
 
-  const calls: McpCall[] = [];
-  let filesScanned = 0;
   let linesSeen = 0;
   let relevantEvents = 0;
+  let pairedEvents = 0;
+  let nonMcpCalls = 0;
   let readErrors = 0;
-  const limit = options.limit;
+  let filesScanned = 0;
+  let filesSkippedUpToDate = 0;
+  let selfReferenceExcluded = 0;
+  const collected: McpCall[] = [];
 
-  outer: for (const file of allFiles) {
-    filesScanned++;
-    const events: ClaudeCodeLineEvent[] = [];
-    try {
-      for await (const line of readJsonlLines(file)) {
-        linesSeen++;
-        const ev = parseClaudeCodeLine(line);
-        if (ev !== null) {
-          relevantEvents++;
-          events.push(ev);
+  try {
+    for (const file of allFiles) {
+      filesScanned++;
+
+      let startByte = 0;
+      if (queries) {
+        const prior = queries.getScanState(file);
+        const stats = await stat(file).catch(() => null);
+        if (!stats) continue;
+        startByte = prior?.last_byte_offset ?? 0;
+        // File shrunk (rotated/compacted) → rescan from 0.
+        if (startByte > stats.size) startByte = 0;
+        if (startByte >= stats.size) {
+          filesSkippedUpToDate++;
+          continue;
         }
       }
-    } catch (cause) {
-      readErrors++;
-      process.stderr.write(`warning: failed to read ${file}: ${String(cause)}\n`);
-      continue;
+
+      const events: ClaudeCodeLineEvent[] = [];
+      try {
+        for await (const line of readJsonlLines(file, startByte)) {
+          linesSeen++;
+          const ev = parseClaudeCodeLine(line);
+          if (ev !== null) {
+            relevantEvents++;
+            events.push(ev);
+          }
+        }
+      } catch (cause) {
+        readErrors++;
+        process.stderr.write(`warning: failed to read ${file}: ${String(cause)}\n`);
+        continue;
+      }
+
+      const paired = pairClaudeCodeEvents(events);
+      pairedEvents += paired.length;
+
+      const perFileCalls: McpCall[] = [];
+      for (const raw of paired) {
+        const call = ClaudeCodeNormalizer.normalize(raw, ctx);
+        if (call === null) {
+          nonMcpCalls++;
+          continue;
+        }
+        perFileCalls.push(call);
+        if (typeof limit === 'number' && collected.length + perFileCalls.length >= limit) {
+          break;
+        }
+      }
+
+      if (dbHandle && queries) {
+        const ingestStats = ingestCalls(dbHandle.db, queries, perFileCalls);
+        selfReferenceExcluded += ingestStats.selfReferenceExcluded;
+        const sizeNow = (await stat(file).catch(() => null))?.size ?? startByte;
+        queries.upsertScanState({
+          file_path: file,
+          last_byte_offset: sizeNow,
+          last_scanned_at: Date.now(),
+          client: CLIENT,
+        });
+      }
+
+      collected.push(...perFileCalls);
+      if (typeof limit === 'number' && collected.length >= limit) break;
     }
 
-    for (const raw of pairClaudeCodeEvents(events)) {
-      const call = ClaudeCodeNormalizer.normalize(raw, ctx);
-      if (call === null) continue;
-      calls.push(call);
-      if (typeof limit === 'number' && calls.length >= limit) break outer;
+    if (options.print) {
+      process.stdout.write(
+        `${JSON.stringify(collected.slice(0, limit ?? collected.length), null, 2)}\n`,
+      );
     }
+  } finally {
+    dbHandle?.close();
   }
 
-  process.stdout.write(`${JSON.stringify(calls, null, 2)}\n`);
-  process.stderr.write(
-    `scanned ${filesScanned} file(s), ${linesSeen} lines, ${relevantEvents} relevant events, ${readErrors} read error(s) → ${calls.length} MCP call(s)\n`,
-  );
+  const summary = [
+    `files: ${filesScanned} scanned`,
+    `${filesSkippedUpToDate} up-to-date`,
+    `${readErrors} read errors`,
+    `lines: ${linesSeen} read`,
+    `relevant: ${relevantEvents}`,
+    `paired: ${pairedEvents}`,
+    `mcp_calls: ${collected.length} ingested`,
+    `non_mcp: ${nonMcpCalls} (Bash/Read/Edit/Agent filtered)`,
+    `self_reference_excluded: ${selfReferenceExcluded}`,
+  ].join(' | ');
+  process.stderr.write(`${summary}\n`);
+  if (useDb) {
+    process.stderr.write(`db: ${options.db ?? defaultDbPath()}\n`);
+  }
 }
 
 function collect(value: string, previous: string[]): string[] {

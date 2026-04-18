@@ -28,10 +28,14 @@
     "clean": "rm -rf dist"
   },
   "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
     "@types/node": "20.19.39",
     "@vitest/coverage-v8": "1.6.1",
     "tsup": "8.2.3",
     "typescript": "5.5.3",
     "vitest": "1.6.1"
+  },
+  "dependencies": {
+    "better-sqlite3": "^12.9.0"
   }
 }

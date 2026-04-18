@@ -21,3 +21,15 @@ export {
   claudeCodeDefaultLogPaths as defaultClaudeCodeLogPaths,
   readJsonlLines,
 } from './util/io.js';
+export { openDb, runMigrations, defaultMigrationsDir } from './db/connection.js';
+export type { Database, OpenDbOptions, OpenedDb, MigrationLogger } from './db/connection.js';
+export { createQueries } from './db/queries.js';
+export type { Queries, TopServerRow, ScanStateRow } from './db/queries.js';
+export { ingestCalls, isoDay, SELF_REFERENCE_SERVERS } from './aggregator/ingest.js';
+export type { IngestStats } from './aggregator/ingest.js';
+export {
+  getProjectIdentity,
+  normalizeRemoteUrl,
+  tryGitRemoteOrigin,
+} from './project/identity.js';
+export type { ProjectIdentityResult } from './project/identity.js';
