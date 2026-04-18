@@ -23,9 +23,13 @@
     "dev": "tsup --watch",
     "typecheck": "tsc --noEmit",
     "test": "vitest run --passWithNoTests",
+    "test:fixtures": "vitest run --passWithNoTests test/fixtures.test.ts",
+    "coverage": "vitest run --coverage",
     "clean": "rm -rf dist"
   },
   "devDependencies": {
+    "@types/node": "20.19.39",
+    "@vitest/coverage-v8": "1.6.1",
     "tsup": "8.2.3",
     "typescript": "5.5.3",
     "vitest": "1.6.1"

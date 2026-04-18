@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 import { Command } from 'commander';
 
+import { registerScanCommand } from './commands/scan.js';
+
 const program = new Command();
 
 program
@@ -9,10 +11,15 @@ program
   .version('0.0.0');
 
 program
-  .command('hello', { isDefault: true })
+  .command('hello')
   .description('Smoke test — prints a greeting.')
   .action(() => {
     process.stdout.write('hello from mcpinsight\n');
   });
 
-program.parse();
+registerScanCommand(program);
+
+program.parseAsync().catch((err) => {
+  process.stderr.write(`${String(err)}\n`);
+  process.exit(1);
+});

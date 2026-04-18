@@ -1,0 +1,13 @@
+{
+  "client": "claude-code",
+  "parser_version": 1,
+  "recorded_at": "2026-04-12",
+  "scenario": "subagent-session-sidechain",
+  "description": "One main-session MCP call followed by two sub-agent (isSidechain:true) MCP calls. All share the same sessionId. Parser must not collapse or drop the sub-agent calls.",
+  "expected_call_count": 3,
+  "expected_servers": ["filesystem", "github"],
+  "expected_tools": ["filesystem/read_file", "github/list_issues", "github/get_issue"],
+  "expected_errors": 0,
+  "expected_sidechain_count": 2,
+  "expected_edge_cases": ["sidechain-preserved"]
+}

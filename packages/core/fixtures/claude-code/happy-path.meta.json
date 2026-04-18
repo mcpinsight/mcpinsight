@@ -1,0 +1,12 @@
+{
+  "client": "claude-code",
+  "parser_version": 1,
+  "recorded_at": "2026-04-10",
+  "scenario": "happy-path-multi-server-with-error",
+  "description": "3 MCP tool_use events (filesystem read/write + github search) each paired with tool_result. Plus a non-MCP Bash tool_use to verify it is filtered out. One MCP call fails (github). Boot text-only assistant message to confirm non-tool messages are skipped.",
+  "expected_call_count": 3,
+  "expected_servers": ["filesystem", "github"],
+  "expected_tools": ["filesystem/read_file", "filesystem/write_file", "github/search_code"],
+  "expected_errors": 1,
+  "expected_edge_cases": ["non-mcp-tool-filtered", "text-only-message-skipped"]
+}
