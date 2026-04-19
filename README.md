@@ -2,11 +2,9 @@
 
 Analytics for MCP servers in AI coding agents. Local-first CLI + web dashboard for Claude Code and Codex (with Cursor, Windsurf, Copilot on the roadmap).
 
-```bash
-npx mcpinsight
-```
+> **Status — pre-launch (Day 13 of 30).** The CLI is not yet on npm. See [Run it locally today](#run-it-locally-today) to try the current build, or [join the waitlist](https://mcpinsight.dev) for the launch email.
 
-That's the entire first experience: the CLI scans your `~/.claude/projects/` (and `~/.codex/sessions/` if present), writes a local SQLite database at `~/.mcpinsight/data.db`, and opens a dashboard showing which MCP servers you actually use, which ones sit idle, and which ones confuse your agent with overlapping tool names.
+On launch (May 2026), the CLI will scan your `~/.claude/projects/` (and `~/.codex/sessions/` once the Codex parser ships in Week 3), write a local SQLite database at `~/.mcpinsight/data.db`, and open a dashboard showing which MCP servers you actually use, which ones sit idle, and which ones confuse your agent with overlapping tool names.
 
 ## What it does
 
@@ -22,7 +20,22 @@ That's the entire first experience: the CLI scans your `~/.claude/projects/` (an
 - Not an agent runtime — we read sessions, we don't intercept them.
 - Not a team dashboard in v0 — Team tier arrives in month 6.
 
-## Install
+## Run it locally today
+
+Until the npm release, build from source:
+
+```bash
+pnpm install
+pnpm --filter @mcpinsight/core build
+pnpm --filter @mcpinsight/cli build
+node packages/cli/dist/index.js scan
+```
+
+Full CLI reference, DB path, and table schema: [`packages/cli/README.md`](packages/cli/README.md).
+
+## Install (post-launch)
+
+The commands below will work once `@mcpinsight/cli` is published to npm (target: end of Week 4, ~2026-05-12).
 
 ```bash
 # One-shot (recommended for first-time)
@@ -37,12 +50,16 @@ mcpinsight activate
 
 ## Status
 
-Early access. v0.x. Public launch: May 2026.
+Pre-launch. v0.x. Public launch: May 2026.
 
-- ✅ Claude Code parser
-- 🚧 Codex parser (shipping in Week 3)
-- 🚧 Web dashboard
-- 🚧 Health Score v2
+- ✅ Claude Code parser + normalizer (Day 12, ships 99.6% line coverage)
+- ✅ SQLite aggregator + `mcpinsight scan` with incremental rescans (Day 13)
+- ✅ INV-01 git-derived project identity
+- 🚧 `mcpinsight top` + `servers` commands (Day 14, current sprint)
+- 🚧 Codex parser (Week 3)
+- 🚧 Web dashboard (Week 3)
+- 🚧 Licensing + opt-in telemetry (Week 4)
+- 🚧 Health Score v2 (Week 3)
 - 📋 Cursor parser (Q2 2026)
 - 📋 Team tier (month 6)
 

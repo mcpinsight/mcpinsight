@@ -212,6 +212,83 @@ describe('ingestCalls', () => {
   });
 });
 
+describe('listServers', () => {
+  it('returns empty array when no calls are present', () => {
+    const { queries, close } = freshDb();
+    try {
+      expect(queries.listServers({ windowSinceMs: 0 })).toEqual([]);
+    } finally {
+      close();
+    }
+  });
+
+  it('rolls up per server with last activity, windowed count, and client list', () => {
+    const { db, queries, close } = freshDb();
+    try {
+      const base = Date.UTC(2026, 3, 10);
+      ingestCalls(db, queries, [
+        // filesystem: 3 calls, two in-window, one out; two clients
+        call({ server_name: 'filesystem', tool_name: 'read', ts: base + 1_000_000 }),
+        call({
+          server_name: 'filesystem',
+          tool_name: 'read',
+          ts: base + 2_000_000,
+          client: 'codex',
+        }),
+        call({ server_name: 'filesystem', tool_name: 'read', ts: base - 10_000_000 }),
+        // github: one call, in-window
+        call({ server_name: 'github', tool_name: 'search', ts: base + 500_000 }),
+      ]);
+      const rows = queries.listServers({ windowSinceMs: base });
+      expect(rows).toHaveLength(2);
+      // Ordered by most recent last_activity_ms first
+      expect(rows[0]?.server_name).toBe('filesystem');
+      expect(rows[0]?.last_activity_ms).toBe(base + 2_000_000);
+      expect(rows[0]?.calls_in_window).toBe(2);
+      expect(rows[0]?.total_calls).toBe(3);
+      expect(rows[0]?.clients).toBe('claude-code,codex');
+
+      expect(rows[1]?.server_name).toBe('github');
+      expect(rows[1]?.calls_in_window).toBe(1);
+      expect(rows[1]?.total_calls).toBe(1);
+    } finally {
+      close();
+    }
+  });
+
+  it('surfaces zombies — servers with total_calls > 0 but calls_in_window = 0', () => {
+    const { db, queries, close } = freshDb();
+    try {
+      const ancient = Date.UTC(2026, 0, 1);
+      const windowStart = Date.UTC(2026, 3, 1);
+      ingestCalls(db, queries, [call({ server_name: 'gdrive', tool_name: 'list', ts: ancient })]);
+      const rows = queries.listServers({ windowSinceMs: windowStart });
+      expect(rows).toHaveLength(1);
+      expect(rows[0]).toMatchObject({
+        server_name: 'gdrive',
+        calls_in_window: 0,
+        total_calls: 1,
+      });
+    } finally {
+      close();
+    }
+  });
+
+  it('INV-04: self-reference server is excluded from listServers', () => {
+    const { db, queries, close } = freshDb();
+    try {
+      ingestCalls(db, queries, [
+        call({ server_name: 'mcpinsight', tool_name: 'overview' }),
+        call({ server_name: 'filesystem', tool_name: 'read' }),
+      ]);
+      const rows = queries.listServers({ windowSinceMs: 0 });
+      expect(rows.map((r) => r.server_name)).toEqual(['filesystem']);
+    } finally {
+      close();
+    }
+  });
+});
+
 describe('scan_state', () => {
   it('getScanState returns null for unknown file', () => {
     const { queries, close } = freshDb();

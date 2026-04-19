@@ -28,6 +28,23 @@ export interface ScanStateRow {
   client: string;
 }
 
+/**
+ * One row of the `servers` CLI listing — a per-server activity overview.
+ *
+ * `last_activity_ms` is the most recent `ts` across all clients for this
+ * server; `calls_in_window` is the count of calls within the supplied window
+ * (used by `--zombies` to show servers with 0 calls in N days). Self-reference
+ * servers are excluded (INV-04).
+ */
+export interface ServerListRow {
+  server_name: string;
+  last_activity_ms: number;
+  calls_in_window: number;
+  total_calls: number;
+  /** Comma-separated distinct client ids, alphabetized. */
+  clients: string;
+}
+
 export interface Queries {
   insertCall(call: McpCall): void;
   upsertServerStatDaily(row: ServerStatDaily): void;
@@ -40,6 +57,7 @@ export interface Queries {
     day_end_ms: number;
   }): void;
   topServers(opts: { sinceMs: number; client: Client | null; limit: number }): TopServerRow[];
+  listServers(opts: { windowSinceMs: number }): ServerListRow[];
   getScanState(filePath: string): ScanStateRow | null;
   upsertScanState(row: ScanStateRow): void;
 }
@@ -123,6 +141,19 @@ export function createQueries(db: Database): Queries {
     LIMIT @limit
   `);
 
+  const listServers = db.prepare(`
+    SELECT
+      server_name,
+      MAX(ts) AS last_activity_ms,
+      SUM(CASE WHEN ts >= @window_since_ms THEN 1 ELSE 0 END) AS calls_in_window,
+      COUNT(*) AS total_calls,
+      GROUP_CONCAT(DISTINCT client) AS clients
+    FROM mcp_calls
+    WHERE server_name NOT IN (${selfRefList})
+    GROUP BY server_name
+    ORDER BY last_activity_ms DESC
+  `);
+
   const getScanStateStmt = db.prepare(`
     SELECT file_path, last_byte_offset, last_scanned_at, client
       FROM scan_state
@@ -180,6 +211,27 @@ export function createQueries(db: Database): Queries {
 
     topServers({ sinceMs, client, limit }) {
       return topServers.all({ since_ms: sinceMs, client, limit }) as TopServerRow[];
+    },
+
+    listServers({ windowSinceMs }) {
+      const rows = listServers.all({ window_since_ms: windowSinceMs }) as Array<{
+        server_name: string;
+        last_activity_ms: number;
+        calls_in_window: number;
+        total_calls: number;
+        clients: string | null;
+      }>;
+      return rows.map((r) => ({
+        server_name: r.server_name,
+        last_activity_ms: r.last_activity_ms,
+        calls_in_window: r.calls_in_window,
+        total_calls: r.total_calls,
+        clients: (r.clients ?? '')
+          .split(',')
+          .filter((c) => c.length > 0)
+          .sort()
+          .join(','),
+      }));
     },
 
     getScanState(filePath) {

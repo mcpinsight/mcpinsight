@@ -2,6 +2,8 @@
 import { Command } from 'commander';
 
 import { registerScanCommand } from './commands/scan.js';
+import { registerServersCommand } from './commands/servers.js';
+import { registerTopCommand } from './commands/top.js';
 
 const program = new Command();
 
@@ -18,6 +20,8 @@ program
   });
 
 registerScanCommand(program);
+registerTopCommand(program);
+registerServersCommand(program);
 
 program.parseAsync().catch((err) => {
   process.stderr.write(`${String(err)}\n`);

@@ -67,6 +67,9 @@ importers:
       typescript:
         specifier: 5.5.3
         version: 5.5.3
+      vitest:
+        specifier: 1.6.1
+        version: 1.6.1(@types/node@20.19.39)
 
   packages/core:
     dependencies:
