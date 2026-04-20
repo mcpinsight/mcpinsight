@@ -1,0 +1,15 @@
+{
+  "client": "codex",
+  "parser_version": 1,
+  "recorded_at": "2026-04-22",
+  "scenario": "edge",
+  "description": "No session_meta line at the top → sessionId falls back to 'unknown'. Orphan mcp_tool_call_end (prefix compacted out) is silently dropped. A 'compacted' RolloutItem is ignored. One begin with no matching end surfaces with is_error:null + duration_ms:null. A call with Ok.is_error:true flags an application-level error (not a transport one).",
+  "expected_call_count": 3,
+  "expected_servers": ["filesystem", "github", "memory"],
+  "expected_tools": ["filesystem/read_file", "github/get_pr", "memory/store"],
+  "expected_errors": 1,
+  "expected_null_is_error_count": 1,
+  "expected_null_duration_count": 1,
+  "expected_session_ids": ["unknown"],
+  "expected_edge_cases": ["missing-session-meta-unknown-id", "orphan-tool-result-dropped", "compacted-line-ignored", "unpaired-tool-use-null-result", "ok-is-error-true-app-level"]
+}

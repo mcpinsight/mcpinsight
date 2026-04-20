@@ -5,13 +5,20 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 import { ClaudeCodeNormalizer } from '../src/normalizers/claude-code.js';
-import type { ClaudeCodeRawEvent } from '../src/parsers/claude-code.js';
-import { pairEvents, parseLine } from '../src/parsers/claude-code.js';
+import { CodexNormalizer } from '../src/normalizers/codex.js';
+import {
+  pairEvents as pairClaudeCodeEvents,
+  parseLine as parseClaudeCodeLine,
+} from '../src/parsers/claude-code.js';
+import {
+  pairEvents as pairCodexEvents,
+  parseLine as parseCodexLine,
+} from '../src/parsers/codex.js';
 import { asProjectIdentity } from '../src/types/brands.js';
-import type { McpCall } from '../src/types/canonical.js';
+import type { ClientNormalizer, McpCall, NormalizeContext } from '../src/types/canonical.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
-const fixtureRoot = resolve(here, '..', 'fixtures', 'claude-code');
+const fixturesRoot = resolve(here, '..', 'fixtures');
 
 interface FixtureMeta {
   scenario: string;
@@ -22,6 +29,16 @@ interface FixtureMeta {
   expected_null_is_error_count?: number;
   expected_null_duration_count?: number;
   expected_sidechain_count?: number;
+  expected_session_ids?: string[];
+}
+
+type PairedEvent = { isSidechain?: boolean };
+
+interface ClientRunner {
+  dir: string;
+  requiredScenarios: string[];
+  normalizer: ClientNormalizer<never>;
+  run(jsonlPath: string): Promise<{ calls: McpCall[]; paired: PairedEvent[] }>;
 }
 
 async function listDirFiles(root: string): Promise<string[]> {
@@ -33,8 +50,8 @@ async function listDirFiles(root: string): Promise<string[]> {
   return out;
 }
 
-async function loadFixtures(): Promise<Array<{ meta: FixtureMeta; jsonlPath: string }>> {
-  const files = await listDirFiles(fixtureRoot);
+async function loadFixtures(dir: string): Promise<Array<{ meta: FixtureMeta; jsonlPath: string }>> {
+  const files = await listDirFiles(dir);
   const metas = files.filter((f) => f.endsWith('.meta.json'));
   const jsonls = new Set(files.filter((f) => f.endsWith('.jsonl')));
   const loaded: Array<{ meta: FixtureMeta; jsonlPath: string }> = [];
@@ -47,81 +64,126 @@ async function loadFixtures(): Promise<Array<{ meta: FixtureMeta; jsonlPath: str
   return loaded;
 }
 
-async function runFixture(
-  jsonlPath: string,
-): Promise<{ calls: McpCall[]; paired: ClaudeCodeRawEvent[] }> {
-  const text = await readFile(jsonlPath, 'utf-8');
-  const lines = text.split(/\r?\n/);
-  const events = [];
-  for (const line of lines) {
-    const ev = parseLine(line);
-    if (ev !== null) events.push(ev);
-  }
-  const paired = pairEvents(events);
-  const ctx = { projectIdentity: asProjectIdentity('fixture-proj'), hasApiKey: false };
-  const calls: McpCall[] = [];
-  for (const raw of paired) {
-    const call = ClaudeCodeNormalizer.normalize(raw, ctx);
-    if (call !== null) calls.push(call);
-  }
-  return { calls, paired };
+function makeCtx(): NormalizeContext {
+  return { projectIdentity: asProjectIdentity('fixture-proj'), hasApiKey: false };
 }
 
-describe('fixtures/claude-code', () => {
-  it('has at least 3 fixture scenarios covering happy-path, compacted, and subagent', async () => {
-    const all = await listDirFiles(fixtureRoot);
-    const scenarios = all
-      .filter((f) => f.endsWith('.meta.json'))
-      .map((f) => f.replace(/.*\/([^/]+)\.meta\.json$/, '$1'));
-    expect(scenarios).toContain('happy-path');
-    expect(scenarios).toContain('compacted-session');
-    expect(scenarios).toContain('subagent-session');
+const clients: ClientRunner[] = [
+  {
+    dir: resolve(fixturesRoot, 'claude-code'),
+    requiredScenarios: ['happy-path', 'compacted-session', 'subagent-session'],
+    normalizer: ClaudeCodeNormalizer as ClientNormalizer<never>,
+    async run(jsonlPath) {
+      const text = await readFile(jsonlPath, 'utf-8');
+      const events = [];
+      for (const line of text.split(/\r?\n/)) {
+        const ev = parseClaudeCodeLine(line);
+        if (ev !== null) events.push(ev);
+      }
+      const paired = pairClaudeCodeEvents(events);
+      const ctx = makeCtx();
+      const calls: McpCall[] = [];
+      for (const raw of paired) {
+        const call = ClaudeCodeNormalizer.normalize(raw, ctx);
+        if (call !== null) calls.push(call);
+      }
+      return { calls, paired };
+    },
+  },
+  {
+    dir: resolve(fixturesRoot, 'codex'),
+    requiredScenarios: ['happy-path', 'malformed', 'edge'],
+    normalizer: CodexNormalizer as ClientNormalizer<never>,
+    async run(jsonlPath) {
+      const text = await readFile(jsonlPath, 'utf-8');
+      const events = [];
+      for (const line of text.split(/\r?\n/)) {
+        const ev = parseCodexLine(line);
+        if (ev !== null) events.push(ev);
+      }
+      const paired = pairCodexEvents(events);
+      const ctx = makeCtx();
+      const calls: McpCall[] = [];
+      for (const raw of paired) {
+        const call = CodexNormalizer.normalize(raw, ctx);
+        if (call !== null) calls.push(call);
+      }
+      return { calls, paired };
+    },
+  },
+];
+
+for (const client of clients) {
+  describe(`fixtures/${client.normalizer.client}`, () => {
+    it('has required scenarios', async () => {
+      const all = await listDirFiles(client.dir);
+      const scenarios = all
+        .filter((f) => f.endsWith('.meta.json'))
+        .map((f) => f.replace(/.*\/([^/]+)\.meta\.json$/, '$1'));
+      for (const required of client.requiredScenarios) {
+        expect(scenarios).toContain(required);
+      }
+    });
+
+    it('each fixture matches its meta expectations', async () => {
+      const fixtures = await loadFixtures(client.dir);
+      expect(fixtures.length).toBeGreaterThanOrEqual(client.requiredScenarios.length);
+      for (const { meta, jsonlPath } of fixtures) {
+        const { calls, paired } = await client.run(jsonlPath);
+        expect(
+          calls,
+          `${client.normalizer.client}/${meta.scenario}: expected_call_count`,
+        ).toHaveLength(meta.expected_call_count);
+
+        const servers = [...new Set(calls.map((c) => c.server_name))].sort();
+        expect(servers, `${client.normalizer.client}/${meta.scenario}: expected_servers`).toEqual(
+          [...meta.expected_servers].sort(),
+        );
+
+        const tools = [...new Set(calls.map((c) => `${c.server_name}/${c.tool_name}`))].sort();
+        expect(tools, `${client.normalizer.client}/${meta.scenario}: expected_tools`).toEqual(
+          [...meta.expected_tools].sort(),
+        );
+
+        const errors = calls.filter((c) => c.is_error === true).length;
+        expect(errors, `${client.normalizer.client}/${meta.scenario}: expected_errors`).toBe(
+          meta.expected_errors,
+        );
+
+        if (typeof meta.expected_null_is_error_count === 'number') {
+          const nulls = calls.filter((c) => c.is_error === null).length;
+          expect(
+            nulls,
+            `${client.normalizer.client}/${meta.scenario}: expected_null_is_error_count`,
+          ).toBe(meta.expected_null_is_error_count);
+        }
+
+        if (typeof meta.expected_null_duration_count === 'number') {
+          const nulls = calls.filter((c) => c.duration_ms === null).length;
+          expect(
+            nulls,
+            `${client.normalizer.client}/${meta.scenario}: expected_null_duration_count`,
+          ).toBe(meta.expected_null_duration_count);
+        }
+
+        if (typeof meta.expected_sidechain_count === 'number') {
+          // `isSidechain` lives on the paired raw event; `McpCall` does not
+          // carry it (canonical shape frozen by INV-06). Assert pre-normalization.
+          const sidechainPaired = paired.filter((p) => p.isSidechain === true).length;
+          expect(
+            sidechainPaired,
+            `${client.normalizer.client}/${meta.scenario}: expected_sidechain_count (paired)`,
+          ).toBe(meta.expected_sidechain_count);
+        }
+
+        if (Array.isArray(meta.expected_session_ids)) {
+          const seen = [...new Set(calls.map((c) => c.session_id as string))].sort();
+          expect(
+            seen,
+            `${client.normalizer.client}/${meta.scenario}: expected_session_ids`,
+          ).toEqual([...meta.expected_session_ids].sort());
+        }
+      }
+    });
   });
-
-  it('each fixture matches its meta expectations', async () => {
-    const fixtures = await loadFixtures();
-    expect(fixtures.length).toBeGreaterThanOrEqual(3);
-    for (const { meta, jsonlPath } of fixtures) {
-      const { calls, paired } = await runFixture(jsonlPath);
-      expect(calls, `${meta.scenario}: expected_call_count`).toHaveLength(meta.expected_call_count);
-
-      const servers = [...new Set(calls.map((c) => c.server_name))].sort();
-      expect(servers, `${meta.scenario}: expected_servers`).toEqual(
-        [...meta.expected_servers].sort(),
-      );
-
-      const tools = [...new Set(calls.map((c) => `${c.server_name}/${c.tool_name}`))].sort();
-      expect(tools, `${meta.scenario}: expected_tools`).toEqual([...meta.expected_tools].sort());
-
-      const errors = calls.filter((c) => c.is_error === true).length;
-      expect(errors, `${meta.scenario}: expected_errors`).toBe(meta.expected_errors);
-
-      if (typeof meta.expected_null_is_error_count === 'number') {
-        const nulls = calls.filter((c) => c.is_error === null).length;
-        expect(nulls, `${meta.scenario}: expected_null_is_error_count`).toBe(
-          meta.expected_null_is_error_count,
-        );
-      }
-
-      if (typeof meta.expected_null_duration_count === 'number') {
-        const nulls = calls.filter((c) => c.duration_ms === null).length;
-        expect(nulls, `${meta.scenario}: expected_null_duration_count`).toBe(
-          meta.expected_null_duration_count,
-        );
-      }
-
-      if (typeof meta.expected_sidechain_count === 'number') {
-        // `isSidechain` lives on the paired raw event; `McpCall` does not carry
-        // it (canonical shape frozen by INV-06). Assert pre-normalization.
-        const mcpToolUseIds = new Set(calls.map((c) => `${c.session_id}:${c.tool_name}`));
-        const sidechainPaired = paired.filter((p) => p.isSidechain).length;
-        expect(sidechainPaired, `${meta.scenario}: expected_sidechain_count (paired)`).toBe(
-          meta.expected_sidechain_count,
-        );
-        // Sanity: none of the sidechain raw events should have been dropped by
-        // the normalizer (MCP tools all carry through).
-        expect(mcpToolUseIds.size).toBeGreaterThan(0);
-      }
-    }
-  });
-});
+}

@@ -21,3 +21,18 @@ export function claudeCodeDefaultLogPaths(): string[] {
   if (process.platform === 'win32') return [];
   return [expandHome('~/.claude/projects')];
 }
+
+/**
+ * OS-specific default log paths for OpenAI Codex CLI.
+ *
+ * Codex writes rollout files under `$CODEX_HOME/sessions/YYYY/MM/DD/rollout-*.jsonl`.
+ * We return the root `sessions/` dir; `discoverSessionFiles` recurses through
+ * the date sub-dirs. If `CODEX_HOME` is set, prefer it; otherwise default to
+ * `~/.codex/sessions`. Windows deferred (same rationale as Claude Code).
+ */
+export function codexDefaultLogPaths(): string[] {
+  if (process.platform === 'win32') return [];
+  const codexHome = process.env.CODEX_HOME;
+  if (codexHome && codexHome.length > 0) return [expandHome(`${codexHome}/sessions`)];
+  return [expandHome('~/.codex/sessions')];
+}

@@ -1,0 +1,8 @@
+{"timestamp":"2026-04-20T15:00:00.000Z","type":"session_meta","payload":{"id":"sess-ml-01","timestamp":"2026-04-20T15:00:00Z","cwd":"/work","originator":"codex_cli_rs","cli_version":"0.88.0","source":"cli","model_provider":"openai"}}
+{"timestamp":"2026-04-20T15:00:02.500Z","type":"event_msg","payload":{"type":"mcp_tool_call_begin","call_id":"call_m1","invocation":{"server":"filesystem","tool":"list_directory","arguments":{"path":"/work"}}}}
+{"timestamp":"2026-04-20T15:00:02.900Z","type":"event_msg","payload":{"type":"mcp_tool_call_end","call_id":"call_m1","invocation":{"server":"filesystem","tool":"list_directory","arguments":{}},"duration":{"secs":0,"nanos":400000000},"result":{"Ok":{"content":[{"type":"text","text":"README.md"}],"is_error":false}}}}
+{not json — session crashed mid-write
+{"timestamp":"2026-04-20T15:00:05.000Z","type":"event_msg","payload":{"type":"mcp_tool_call_begin","call_id":"call_m2","invocation":{"server":"memory","tool":"query","arguments":{"q":"foo"}}}}
+{"timestamp":"2026-04-20T15:00:05.450Z","type":"event_msg","payload":{"type":"mcp_tool_call_end","call_id":"call_m2","invocation":{"server":"memory","tool":"query","arguments":{}},"duration":{"secs":0,"nanos":450000000},"result":{}}}
+{"timestamp":"2026-04-20T15:00:06.000Z","type":"event_msg","payload":{"type":"mcp_tool_call_begin","call_id":"","invocation":{"server":"github","tool":"get_issue"}}}
+{"timestamp":"2026-04-20T15:00:07.000Z","type":"event_msg","payload":{"type":"mcp_tool_call_begin","call_id":"call_m3","invocation":{"server":"","tool":"nope"}}}

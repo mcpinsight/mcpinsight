@@ -1,0 +1,13 @@
+{
+  "client": "codex",
+  "parser_version": 1,
+  "recorded_at": "2026-04-22",
+  "scenario": "happy-path",
+  "description": "Three MCP calls across two servers (github/get_issue, filesystem/read_file, github/search_issues). One call fails via result:{Err:...} transport error. turn_context and response_item lines are present to verify the parser ignores them (single-source rule: mcp_tool_call_begin/end only).",
+  "expected_call_count": 3,
+  "expected_servers": ["filesystem", "github"],
+  "expected_tools": ["filesystem/read_file", "github/get_issue", "github/search_issues"],
+  "expected_errors": 1,
+  "expected_session_ids": ["sess-ch-01"],
+  "expected_edge_cases": ["ignored-turn-context", "ignored-response-item", "result-err-transport-error"]
+}

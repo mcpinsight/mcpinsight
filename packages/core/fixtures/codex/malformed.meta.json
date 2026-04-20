@@ -1,0 +1,15 @@
+{
+  "client": "codex",
+  "parser_version": 1,
+  "recorded_at": "2026-04-22",
+  "scenario": "malformed",
+  "description": "A corrupted mid-line (JSON crashed mid-write) is silently skipped. A call with result:{} (neither Ok nor Err) surfaces is_error:null. Two begin lines with invalid invocation data (empty call_id, empty server) are dropped by the parser.",
+  "expected_call_count": 2,
+  "expected_servers": ["filesystem", "memory"],
+  "expected_tools": ["filesystem/list_directory", "memory/query"],
+  "expected_errors": 0,
+  "expected_null_is_error_count": 1,
+  "expected_null_duration_count": 0,
+  "expected_session_ids": ["sess-ml-01"],
+  "expected_edge_cases": ["corrupted-line-skipped", "empty-result-envelope-null-is-error", "empty-call-id-dropped", "empty-server-dropped"]
+}
