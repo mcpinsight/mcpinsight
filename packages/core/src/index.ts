@@ -56,3 +56,14 @@ export {
   tryGitRemoteOrigin,
 } from './project/identity.js';
 export type { ProjectIdentityResult } from './project/identity.js';
+export {
+  BadRequestError,
+  NotFoundError,
+  NotImplementedError,
+  UserFacingError,
+} from './util/errors.js';
+export type { UserFacingErrorOptions } from './util/errors.js';
+export { createLogger, silentLogger } from './util/logger.js';
+export type { CreateLoggerOptions, LogLevel, Logger } from './util/logger.js';
+export { systemClock } from './util/clock.js';
+export type { Clock } from './util/clock.js';
