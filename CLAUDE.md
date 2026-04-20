@@ -20,7 +20,11 @@
 | Kill criterion (m12) | < $1,200 MRR |
 | Solo dev budget | 18–22 h/week |
 
-**Core truth to internalize:** this is a solo project with an ~8 month competitive window before Anthropic ships native MCP history. Every hour spent on over-engineering is an hour not spent on the data moat (State of MCP).
+**Core truth to internalize (updated 2026-04-26):** this is a solo project with a **4–6 month remaining competitive window**. Anthropic already shipped Tool Search (v2.1.7, 2026-01-14), which lazily loads MCP tool definitions and defuses the original "context bloat" pitch (Theme 1 in validation research). The surviving wedge is **usage analytics** (Theme 2): *which MCP servers actually earn their seat*, zombie detection, per-server health score, cross-client comparison — none of which Anthropic, Tool Search, Cursor 2.6, or the `/stats` / `/context` / `/recap` commands currently surface.
+
+**Direct competitor as of 2026-03:** [iris-eval.com](https://iris-eval.com) claims "first MCP-native eval and observability tool." APM giants (Datadog, New Relic Agentic, Honeycomb, Splunk) shipped MCP integrations in Q1 2026 and are within one product-cycle of per-dev telemetry. Every hour spent on over-engineering is an hour not spent on (a) validating the Theme-2 pivot with real alpha users and (b) the `State of MCP` data moat — the one thing APM giants can't replicate because they see only single-tenant data.
+
+**What changed the math:** see `research/tool-search-impact-2026-04-26.md` for the verified Tool Search feature audit, the multi-agent pivot analysis, and the formal go/no-go gate moved from Day 28 (Week-4 start) to Day 23 (end of Week 3).
 
 ---
 
@@ -202,4 +206,4 @@ If stuck:
 
 This file is versioned. Every edit that changes an invariant or a phase requires a note in the commit message: `CLAUDE.md: <what changed> — <why>`.
 
-Last significant update: 2026-04-17 (initial workspace).
+Last significant update: 2026-04-26 — **§1 Core truth rewritten** post Tool Search verification. Competitive window shrunk 8 → 4–6 months; Theme-2 pivot committed; formal go/no-go gate moved from Day 28 to Day 23. Prior revisions: 2026-04-17 (initial workspace).

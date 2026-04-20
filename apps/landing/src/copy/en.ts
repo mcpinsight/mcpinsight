@@ -4,9 +4,9 @@
 
 export const copy = {
   meta: {
-    title: 'MCPInsight — Analytics for MCP servers in Claude Code, Codex, Cursor',
+    title: 'MCPInsight — Which of your MCP servers actually earn their seat?',
     description:
-      'Which MCP server is eating your context? MCPInsight reads your Claude Code, Codex, and Cursor logs. Local, open source, ~60 seconds to first insight.',
+      'MCPInsight scores every MCP server you run in Claude Code, Codex, and Cursor on activation, success rate, tool use, and clarity. Local, open source, ~60 seconds to first insight.',
   },
   nav: {
     brand: 'MCPInsight',
@@ -16,9 +16,9 @@ export const copy = {
   },
   hero: {
     eyebrow: 'Building in public · Week 3 of 6',
-    headline: 'Which MCP server is eating your context?',
+    headline: 'Which of your MCP servers actually earn their seat?',
     subhead:
-      'MCPInsight reads your Claude Code, Codex, and Cursor logs, then tells you which servers earn their slot — and which to kill. Local, open source, ~60 seconds to first insight.',
+      "Claude Code's Tool Search defuses context bloat — but it won't tell you which of your MCP servers are zombies, which are drag, and which are actually pulling their weight. MCPInsight reads the logs you already have and scores each server 0–100. Local, open source.",
     proofLinkLabel: 'Open source on GitHub',
   },
   waitlist: {
@@ -33,30 +33,33 @@ export const copy = {
   },
   problem: {
     sectionLabel: 'The problem',
-    heading: 'The invisible layer of your AI coding setup',
+    heading: 'Tool Search made the token bill quieter — not the usage question clearer',
     cards: [
-      'Your agent calls the same server 40 times per session. You never see it.',
-      'That MCP server you installed 3 weeks ago — still eating context. Do you use it?',
-      'Every tool call is logged. Nothing reads those logs — until now.',
+      'You installed 12 MCP servers. You remember configuring 6 of them. Which of the other 6 actually fire?',
+      'Your agent picks the wrong tool 30 % of the time. Is the culprit one bad server, or all of them?',
+      'Every tool call is logged in `~/.claude/projects/*.jsonl`. Nothing reads those logs — until now.',
     ],
   },
   solution: {
     sectionLabel: 'The solution',
-    heading: 'MCPInsight reads the logs you already have',
-    localityNote: 'Runs locally. Your data never leaves your machine.',
+    heading: 'A Health Score for every MCP server you run',
+    localityNote: 'Runs locally. Your data never leaves your machine. MIT-licensed.',
     cards: [
-      { title: 'Find what drags', body: 'Spot the 3 servers that drag every session down.' },
       {
-        title: 'Kill the deadweight',
-        body: "Kill the 7 servers you haven't touched in 30 days.",
+        title: 'Health Score 0–100',
+        body: 'Per-server score from activation (30 %), success rate (30 %), tool utilization (20 %), clarity (10 %), token efficiency (10 %).',
+      },
+      {
+        title: 'Zombie detection',
+        body: "The 7 servers you haven't touched in 30 days — flagged, with one-line actions to remove them.",
       },
       {
         title: 'Per-tool attribution',
-        body: 'See which tools actually saved you tokens — per server, per session.',
+        body: 'See which tools each server actually called, error rates, and average output cost — across every session.',
       },
       {
-        title: 'Multi-client',
-        body: 'Compare Claude Code, Codex, and Cursor side by side.',
+        title: 'Cross-client',
+        body: 'Claude Code and Codex today. Cursor next. Your MCP picture in one place.',
       },
     ],
   },
@@ -68,9 +71,9 @@ export const copy = {
     roadmap: [
       { week: 'Week 1', title: 'Landing + waitlist', status: 'done' },
       { week: 'Week 2', title: 'Parser + CLI top', status: 'done' },
-      { week: 'Week 3', title: 'Dashboard + Codex parser', status: 'current' },
-      { week: 'Week 4', title: 'Licensing + telemetry', status: 'upcoming' },
-      { week: 'Week 5', title: 'Launch + State of MCP', status: 'upcoming' },
+      { week: 'Week 3', title: 'Dashboard + Health Score v2', status: 'done' },
+      { week: 'Week 4', title: 'State of MCP + soft launch', status: 'current' },
+      { week: 'Week 5', title: 'Licensing + telemetry', status: 'upcoming' },
       { week: 'Week 6', title: 'Team tier + Cursor', status: 'upcoming' },
     ],
   },
@@ -80,14 +83,14 @@ export const copy = {
     githubCtaLabel: 'Star on GitHub',
     twitterCtaLabel: 'Share on X',
     twitterText:
-      'Just found MCPInsight — analytics for MCP servers in Claude Code, Codex, and Cursor. Shipping weekly in public.',
+      'Just found MCPInsight — a Health Score for every MCP server you run in Claude Code / Codex / Cursor. Spots the zombies Tool Search still hides. Shipping weekly in public.',
     twitterUrl: 'https://mcpinsight.dev',
   },
   teams: {
     eyebrow: 'For teams',
-    headline: 'Team tier launches in Week 4.',
+    headline: 'Team tier after the solo launch.',
     subhead:
-      'Compare MCP server usage across your team. Catch noisy servers before they spread. Share waste reports from your dashboards.',
+      'Aggregate Health Scores across your team. Catch a wobbly MCP server before it spreads. Compare usage against the public State of MCP benchmark. Shipping after the solo tier finds its footing.',
     sub: 'Until then — the solo waitlist gets you in first.',
     backCta: 'Back to home',
   },

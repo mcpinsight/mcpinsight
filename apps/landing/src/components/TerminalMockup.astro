@@ -4,7 +4,7 @@
 <div
   class="mx-auto max-w-lg overflow-hidden rounded-lg border border-slate-200 bg-slate-900 text-left shadow-lg"
   role="img"
-  aria-label="Terminal showing mcpinsight top CLI output with four MCP servers and their waste scores"
+  aria-label="Terminal showing mcpinsight top CLI output with four MCP servers and their Health Scores: filesystem 87, postgres 42, github 91, playwright 18"
 >
   <div class="flex items-center gap-1.5 border-b border-slate-800 px-4 py-2.5">
     <span class="h-2.5 w-2.5 rounded-full bg-rose-500" aria-hidden="true"></span>
@@ -16,9 +16,9 @@
     class="overflow-x-auto px-5 py-4 font-mono text-sm leading-relaxed text-slate-100"
   ><span class="text-emerald-400">$</span> mcpinsight top
 
-<span class="text-slate-400">SERVER         CALLS   HEALTH   WASTE</span>
-filesystem     2,843      87    <span class="text-emerald-400">low</span>
-postgres         847      42    <span class="text-rose-400">high</span>  <span class="text-rose-400">←</span>
-github           312      91    <span class="text-emerald-400">none</span>
-playwright        28      18    <span class="text-rose-400">high</span>  <span class="text-rose-400">←</span></pre>
+<span class="text-slate-400">SERVER         CALLS   TOOLS   SUCCESS   HEALTH</span>
+filesystem     2,843       4    99.3%   <span class="text-emerald-400">   87</span>
+postgres         847       3    94.2%   <span class="text-amber-400">   42</span>  <span class="text-amber-400">flag</span>
+github           312       2    99.7%   <span class="text-emerald-400">   91</span>
+playwright        28       8    67.9%   <span class="text-rose-400">   18</span>  <span class="text-rose-400">kill</span></pre>
 </div>
