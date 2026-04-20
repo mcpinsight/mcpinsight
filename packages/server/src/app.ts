@@ -38,7 +38,7 @@ export function createApp(deps: Deps, options: CreateAppOptions = {}): Hono {
   app.onError(createErrorHandler(deps.logger));
 
   app.route('/api/health', systemRoutes());
-  app.route('/api/health', healthScoreRoutes());
+  app.route('/api/health', healthScoreRoutes(deps));
   app.route('/api/servers', serversRoutes(deps));
   app.route('/api/clients', clientsRoutes(deps));
   app.route('/api/scan', scanRoutes());

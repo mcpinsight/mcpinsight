@@ -1,0 +1,23 @@
+{
+  "scenario": "active-essential-filesystem",
+  "description": "Single-project user (is_essential=true) with a high-use filesystem server. 30 days history, 90 calls in 30d, 2 errors, clean tool names, modest output tokens. Should score well above 60.",
+  "expected_score_gt": 60,
+  "inputs": {
+    "server_name": "filesystem",
+    "total_calls_all_servers": 240,
+    "earliest_ts_ms": 1703376000000,
+    "calls_30d": 90,
+    "errors_30d": 2,
+    "scored_calls_30d": 88,
+    "output_tokens_30d": 135000,
+    "tools_30d": [
+      "list_directory",
+      "read_file",
+      "search_files",
+      "write_file"
+    ],
+    "server_project_count": 1,
+    "user_project_count": 1
+  },
+  "now_ms": 1706054400000
+}

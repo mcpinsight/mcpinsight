@@ -1,0 +1,22 @@
+{
+  "scenario": "insufficient-too-few-calls",
+  "description": "User has 20 days of history (past the too_recent threshold) but only 12 total calls across all servers (below MIN_TOTAL_CALLS=50). Score null, reason: too_few_calls.",
+  "expected_score": null,
+  "expected_insufficient_reason": "too_few_calls",
+  "inputs": {
+    "server_name": "claude_ai_Google_Drive",
+    "total_calls_all_servers": 12,
+    "earliest_ts_ms": 1704326400000,
+    "calls_30d": 3,
+    "errors_30d": 0,
+    "scored_calls_30d": 3,
+    "output_tokens_30d": 1200,
+    "tools_30d": [
+      "search_files",
+      "read_file_content"
+    ],
+    "server_project_count": 1,
+    "user_project_count": 1
+  },
+  "now_ms": 1706054400000
+}

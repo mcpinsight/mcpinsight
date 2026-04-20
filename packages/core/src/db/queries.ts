@@ -1,4 +1,5 @@
 import { SELF_REFERENCE_SERVERS } from '../aggregator/self-reference.js';
+import type { ServerHealthInputs } from '../health/score.js';
 import type { Client, McpCall, ServerStatDaily } from '../types/canonical.js';
 import type { Database } from './connection.js';
 
@@ -63,6 +64,22 @@ export interface ClientListRow {
   last_ts: number;
 }
 
+/** One day's roll-up for the detail-route timeseries chart. */
+export interface TimeseriesRow {
+  day: string;
+  calls: number;
+  errors: number;
+  input_tokens: number;
+  output_tokens: number;
+}
+
+/** Result of `getServerDetail` — all data the detail endpoint needs in one pass. */
+export interface ServerDetailResult {
+  summary: TopServerRow | null;
+  timeseries: ReadonlyArray<TimeseriesRow>;
+  tools: ReadonlyArray<string>;
+}
+
 export interface Queries {
   insertCall(call: McpCall): void;
   upsertServerStatDaily(row: ServerStatDaily): void;
@@ -80,6 +97,25 @@ export interface Queries {
   countCallsByClient(client: Client): number;
   getScanState(filePath: string): ScanStateRow | null;
   upsertScanState(row: ScanStateRow): void;
+  /**
+   * Per-server detail: aggregate summary + daily timeseries + distinct tool list,
+   * all filtered to the same (sinceMs, client) window. Returns `summary: null`
+   * when no calls hit the window so the caller can raise a `NotFoundError`.
+   */
+  getServerDetail(opts: {
+    name: string;
+    sinceMs: number;
+    client: Client | null;
+  }): ServerDetailResult;
+  /**
+   * Everything `computeHealthScore` needs, in one round-trip. Respects INV-04
+   * (self-reference is excluded from user-level counts).
+   */
+  healthInputs(opts: {
+    server_name: string;
+    sinceMs: number;
+    client: Client | null;
+  }): ServerHealthInputs;
 }
 
 export function createQueries(db: Database): Queries {
@@ -212,6 +248,113 @@ export function createQueries(db: Database): Queries {
       client           = excluded.client
   `);
 
+  // Detail summary — one row for the named server in window, `null` if no match.
+  // INV-04: self-reference never appears here either (mirrors topServers). We
+  // don't exclude it in the WHERE because a caller-supplied name can't be a
+  // self-reference (filtered at list-time), but keep the guard for defensive
+  // consistency.
+  const detailSummaryStmt = db.prepare(`
+    SELECT
+      server_name,
+      COUNT(*) AS calls,
+      SUM(CASE WHEN is_error = 1 THEN 1 ELSE 0 END) AS errors,
+      COUNT(DISTINCT tool_name) AS unique_tools,
+      COALESCE(SUM(input_tokens), 0) AS input_tokens,
+      COALESCE(SUM(output_tokens), 0) AS output_tokens,
+      COALESCE(SUM(cache_read_tokens), 0) AS cache_read_tokens,
+      COALESCE(SUM(CASE WHEN cost_is_estimated = 0 THEN cost_usd ELSE 0 END), 0) AS cost_usd_real,
+      COALESCE(SUM(CASE WHEN cost_is_estimated = 1 THEN cost_usd ELSE 0 END), 0) AS cost_usd_est
+    FROM mcp_calls
+    WHERE server_name = @server_name
+      AND ts >= @since_ms
+      AND (@client IS NULL OR client = @client)
+      AND server_name NOT IN (${selfRefList})
+    GROUP BY server_name
+  `);
+
+  // Per-day roll-up for the chart. Day grouping is on UTC (ts in unix ms). The
+  // 86_400_000 divisor avoids SQLite's strftime/unixepoch arithmetic (which
+  // operates on seconds not ms) — integer division + printf keeps it explicit.
+  const detailTimeseriesStmt = db.prepare(`
+    SELECT
+      strftime('%Y-%m-%d', ts / 1000, 'unixepoch') AS day,
+      COUNT(*) AS calls,
+      SUM(CASE WHEN is_error = 1 THEN 1 ELSE 0 END) AS errors,
+      COALESCE(SUM(input_tokens), 0) AS input_tokens,
+      COALESCE(SUM(output_tokens), 0) AS output_tokens
+    FROM mcp_calls
+    WHERE server_name = @server_name
+      AND ts >= @since_ms
+      AND (@client IS NULL OR client = @client)
+      AND server_name NOT IN (${selfRefList})
+    GROUP BY day
+    ORDER BY day ASC
+  `);
+
+  const detailToolsStmt = db.prepare(`
+    SELECT DISTINCT tool_name
+    FROM mcp_calls
+    WHERE server_name = @server_name
+      AND ts >= @since_ms
+      AND (@client IS NULL OR client = @client)
+      AND server_name NOT IN (${selfRefList})
+    ORDER BY tool_name ASC
+  `);
+
+  // User-level aggregate for the insufficient-data check. Self-reference is
+  // excluded so a Week-4+ MCPInsight mcp-server can't inflate the user's
+  // total_calls and bypass the threshold with hollow signal.
+  const healthUserTotalsStmt = db.prepare(`
+    SELECT
+      COUNT(*) AS total_calls,
+      MIN(ts) AS earliest_ts
+    FROM mcp_calls
+    WHERE (@client IS NULL OR client = @client)
+      AND server_name NOT IN (${selfRefList})
+  `);
+
+  // Windowed per-server metrics feeding the Health Score components.
+  const healthServerWindowStmt = db.prepare(`
+    SELECT
+      COUNT(*) AS calls,
+      SUM(CASE WHEN is_error = 1 THEN 1 ELSE 0 END) AS errors,
+      SUM(CASE WHEN is_error IS NOT NULL THEN 1 ELSE 0 END) AS scored_calls,
+      COALESCE(SUM(output_tokens), 0) AS output_tokens
+    FROM mcp_calls
+    WHERE server_name = @server_name
+      AND ts >= @since_ms
+      AND (@client IS NULL OR client = @client)
+      AND server_name NOT IN (${selfRefList})
+  `);
+
+  const healthToolsStmt = db.prepare(`
+    SELECT DISTINCT tool_name
+    FROM mcp_calls
+    WHERE server_name = @server_name
+      AND ts >= @since_ms
+      AND (@client IS NULL OR client = @client)
+      AND server_name NOT IN (${selfRefList})
+    ORDER BY tool_name ASC
+  `);
+
+  // Project counts are taken over the full history (ADR-0004 §Essential-server
+  // definition). Windowing is_essential would let a single week of low activity
+  // flip a genuinely cross-project server out of the floor.
+  const healthServerProjectsStmt = db.prepare(`
+    SELECT COUNT(DISTINCT project_identity) AS n
+    FROM mcp_calls
+    WHERE server_name = @server_name
+      AND (@client IS NULL OR client = @client)
+      AND server_name NOT IN (${selfRefList})
+  `);
+
+  const healthUserProjectsStmt = db.prepare(`
+    SELECT COUNT(DISTINCT project_identity) AS n
+    FROM mcp_calls
+    WHERE (@client IS NULL OR client = @client)
+      AND server_name NOT IN (${selfRefList})
+  `);
+
   return {
     insertCall(call) {
       insertCall.run({
@@ -293,6 +436,53 @@ export function createQueries(db: Database): Queries {
 
     upsertScanState(row) {
       upsertScanStateStmt.run(row);
+    },
+
+    getServerDetail({ name, sinceMs, client }) {
+      const params = { server_name: name, since_ms: sinceMs, client };
+      const summaryRow = detailSummaryStmt.get(params) as TopServerRow | undefined;
+      const timeseries = detailTimeseriesStmt.all(params) as TimeseriesRow[];
+      const toolsRows = detailToolsStmt.all(params) as Array<{ tool_name: string }>;
+      return {
+        summary: summaryRow ?? null,
+        timeseries,
+        tools: toolsRows.map((r) => r.tool_name),
+      };
+    },
+
+    healthInputs({ server_name, sinceMs, client }) {
+      const windowParams = { server_name, since_ms: sinceMs, client };
+      const userParams = { client };
+      const serverParams = { server_name, client };
+
+      const userTotals = healthUserTotalsStmt.get(userParams) as {
+        total_calls: number;
+        earliest_ts: number | null;
+      };
+      const window = healthServerWindowStmt.get(windowParams) as {
+        calls: number;
+        errors: number;
+        scored_calls: number;
+        output_tokens: number;
+      };
+      const tools = (healthToolsStmt.all(windowParams) as Array<{ tool_name: string }>).map(
+        (r) => r.tool_name,
+      );
+      const serverProjects = healthServerProjectsStmt.get(serverParams) as { n: number };
+      const userProjects = healthUserProjectsStmt.get(userParams) as { n: number };
+
+      return {
+        server_name,
+        total_calls_all_servers: userTotals.total_calls,
+        earliest_ts_ms: userTotals.earliest_ts,
+        calls_30d: window.calls,
+        errors_30d: window.errors,
+        scored_calls_30d: window.scored_calls,
+        output_tokens_30d: window.output_tokens,
+        tools_30d: tools,
+        server_project_count: serverProjects.n,
+        user_project_count: userProjects.n,
+      };
     },
   };
 }

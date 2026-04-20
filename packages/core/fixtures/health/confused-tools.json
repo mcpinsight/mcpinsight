@@ -1,0 +1,23 @@
+{
+  "scenario": "confused-tool-names",
+  "description": "Server with three variant spellings of the same tool (read_file / read-file / readFile). Clarity should collapse (< 0.5). Otherwise normal usage.",
+  "expected_clarity_lt": 0.5,
+  "inputs": {
+    "server_name": "alpha",
+    "total_calls_all_servers": 120,
+    "earliest_ts_ms": 1703376000000,
+    "calls_30d": 60,
+    "errors_30d": 1,
+    "scored_calls_30d": 60,
+    "output_tokens_30d": 180000,
+    "tools_30d": [
+      "read-file",
+      "readFile",
+      "read_file",
+      "write_file"
+    ],
+    "server_project_count": 1,
+    "user_project_count": 2
+  },
+  "now_ms": 1706054400000
+}

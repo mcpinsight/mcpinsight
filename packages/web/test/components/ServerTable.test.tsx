@@ -79,10 +79,13 @@ describe('ServerTable', () => {
     expect(screen.getByText('100.0%')).toBeInTheDocument();
   });
 
-  it('shows "—" in the Health column for every row (Day 20 placeholder)', () => {
+  it('shows "—" in the Health column while the health-score query is in flight', () => {
+    // Health score fetch is disabled in this isolated render (no fetch stub);
+    // the badge renders "—" / unknown until the hook resolves.
     renderWithProviders(<ServerTable rows={[row({ server_name: 'filesystem' })]} />);
-    const badges = screen.getAllByLabelText('Health Score ships Day 21.');
-    expect(badges[0]).toHaveTextContent('—');
+    const badge = screen.getByTestId('health-badge');
+    expect(badge).toHaveTextContent('—');
+    expect(badge.getAttribute('data-variant')).toBe('unknown');
   });
 
   it('colors a low success rate as destructive', () => {

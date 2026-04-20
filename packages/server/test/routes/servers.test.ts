@@ -156,7 +156,7 @@ describe('GET /api/servers', () => {
 });
 
 describe('GET /api/servers/:name', () => {
-  it('returns {server_name, summary, timeseries: []} on a hit', async () => {
+  it('returns {server_name, summary, timeseries, tools} on a hit', async () => {
     const { app, close } = setup({
       seed: [
         call({ server_name: 'filesystem', tool_name: 'read_file' }),
@@ -169,14 +169,21 @@ describe('GET /api/servers/:name', () => {
       const body = (await res.json()) as {
         server_name: string;
         summary: Record<string, unknown>;
-        timeseries: unknown[];
+        timeseries: Array<Record<string, unknown>>;
+        tools: string[];
       };
       expect(body.server_name).toBe('filesystem');
       for (const f of REQUIRED_TOP_FIELDS) {
         expect(body.summary).toHaveProperty(f);
       }
       expect(body.summary.calls).toBe(2);
-      expect(body.timeseries).toEqual([]);
+      expect(body.tools).toEqual(['read_file', 'write_file']);
+      expect(body.timeseries.length).toBeGreaterThanOrEqual(1);
+      expect(body.timeseries[0]).toHaveProperty('day');
+      expect(body.timeseries[0]).toHaveProperty('calls');
+      expect(body.timeseries[0]).toHaveProperty('errors');
+      expect(body.timeseries[0]).toHaveProperty('input_tokens');
+      expect(body.timeseries[0]).toHaveProperty('output_tokens');
     } finally {
       close();
     }

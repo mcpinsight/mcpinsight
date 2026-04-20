@@ -2,10 +2,13 @@ import { Link, useParams } from '@tanstack/react-router';
 import { ChevronLeft } from 'lucide-react';
 import type * as React from 'react';
 
-import type { TopServerRow } from '@mcpinsight/core';
+import type { ServerHealth } from '@mcpinsight/core/types';
 
 import { ApiError } from '@/api/client';
+import { useHealthScore } from '@/api/hooks/use-health-score';
 import { useServer } from '@/api/hooks/use-server';
+import { CallsTimeseriesChart } from '@/components/shared/CallsTimeseriesChart';
+import { HealthCard } from '@/components/shared/HealthCard';
 import { ErrorState, Loading } from '@/components/shared/States';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { copy } from '@/copy/en';
@@ -15,7 +18,8 @@ const WINDOW_DAYS = 7;
 
 export function ServerDetailRoute() {
   const { name } = useParams({ from: '/servers/$name' });
-  const query = useServer(name, WINDOW_DAYS);
+  const detail = useServer(name, WINDOW_DAYS);
+  const health = useHealthScore(name);
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-8">
@@ -28,22 +32,35 @@ export function ServerDetailRoute() {
       </Link>
 
       <div className="mt-6">
-        {query.isLoading && <Loading label={copy.detail.loading} />}
-        {query.isError && (
-          <DetailError error={query.error} name={name} refetch={() => void query.refetch()} />
+        {detail.isLoading && <Loading label={copy.detail.loading} />}
+        {detail.isError && (
+          <DetailError error={detail.error} name={name} refetch={() => void detail.refetch()} />
         )}
-        {query.data && <DetailBody name={name} summary={query.data.summary} />}
+        {detail.data && <DetailBody name={name} detail={detail.data} health={health.data} />}
       </div>
     </div>
   );
 }
 
-function DetailBody({ name, summary }: { name: string; summary: TopServerRow }) {
+function DetailBody({
+  name,
+  detail,
+  health,
+}: {
+  name: string;
+  detail: import('@/api/client').ServerDetailResponse;
+  health: ServerHealth | undefined;
+}): React.ReactElement {
   const subtitle = t(copy.detail.subtitle, {
-    calls: formatInt(summary.calls),
-    unique_tools: formatInt(summary.unique_tools),
+    calls: formatInt(detail.summary.calls),
+    unique_tools: formatInt(detail.summary.unique_tools),
     days: WINDOW_DAYS,
   });
+
+  const firstPoint = detail.timeseries[0];
+  const lastPoint = detail.timeseries.at(-1);
+  const daysOfHistory =
+    firstPoint && lastPoint ? Math.max(1, daysBetween(firstPoint.day, lastPoint.day)) : null;
 
   return (
     <>
@@ -51,28 +68,17 @@ function DetailBody({ name, summary }: { name: string; summary: TopServerRow }) 
       <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p>
 
       <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="uppercase text-xs">{copy.detail.healthTitle}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-4xl font-semibold tabular-nums">—</div>
-            <div className="mt-1 text-xs text-muted-foreground">
-              {copy.detail.healthPlaceholder}
-            </div>
-          </CardContent>
-        </Card>
+        <HealthCard
+          health={health}
+          daysOfHistory={daysOfHistory}
+          totalCalls={detail.summary.calls}
+        />
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="uppercase text-xs">{copy.detail.chartTitle}</CardTitle>
           </CardHeader>
           <CardContent>
-            <div
-              className="flex h-48 w-full items-center justify-center rounded-md bg-muted/40 text-sm text-muted-foreground"
-              aria-label={copy.detail.chartPlaceholder}
-            >
-              {copy.detail.chartPlaceholder}
-            </div>
+            <CallsTimeseriesChart points={detail.timeseries} />
           </CardContent>
         </Card>
       </div>
@@ -80,26 +86,46 @@ function DetailBody({ name, summary }: { name: string; summary: TopServerRow }) 
       <section className="mt-8">
         <h2 className="text-base font-medium">{copy.detail.summaryTitle}</h2>
         <dl className="mt-3 grid grid-cols-1 gap-y-2 rounded-md border p-4 text-sm md:grid-cols-2 md:gap-x-8">
-          <SummaryRow label={copy.detail.labels.calls} value={formatInt(summary.calls)} />
-          <SummaryRow label={copy.detail.labels.errors} value={formatInt(summary.errors)} />
+          <SummaryRow label={copy.detail.labels.calls} value={formatInt(detail.summary.calls)} />
+          <SummaryRow label={copy.detail.labels.errors} value={formatInt(detail.summary.errors)} />
           <SummaryRow
             label={copy.detail.labels.unique_tools}
-            value={formatInt(summary.unique_tools)}
+            value={formatInt(detail.summary.unique_tools)}
           />
           <SummaryRow
             label={copy.detail.labels.input_tokens}
-            value={formatInt(summary.input_tokens)}
+            value={formatInt(detail.summary.input_tokens)}
           />
           <SummaryRow
             label={copy.detail.labels.output_tokens}
-            value={formatInt(summary.output_tokens)}
+            value={formatInt(detail.summary.output_tokens)}
           />
           <SummaryRow
             label={copy.detail.labels.cache_read_tokens}
-            value={formatInt(summary.cache_read_tokens)}
+            value={formatInt(detail.summary.cache_read_tokens)}
           />
         </dl>
       </section>
+
+      {detail.tools.length > 0 && (
+        <section className="mt-6">
+          <h2 className="text-base font-medium">{copy.detail.toolsTitle}</h2>
+          <ul
+            className="mt-3 flex flex-wrap gap-2"
+            data-testid="tools-list"
+            aria-label={copy.detail.toolsTitle}
+          >
+            {detail.tools.map((tool) => (
+              <li
+                key={tool}
+                className="rounded-full border bg-muted/40 px-3 py-1 text-xs tabular-nums"
+              >
+                {tool}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
     </>
   );
 }
@@ -145,4 +171,11 @@ function DetailError({
       onRetry={refetch}
     />
   );
+}
+
+function daysBetween(firstIso: string, lastIso: string): number {
+  const first = Date.parse(firstIso);
+  const last = Date.parse(lastIso);
+  if (!Number.isFinite(first) || !Number.isFinite(last)) return 0;
+  return Math.round((last - first) / 86_400_000) + 1;
 }

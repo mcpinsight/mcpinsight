@@ -3,7 +3,8 @@ import type * as React from 'react';
 
 import type { TopServerRow } from '@mcpinsight/core';
 
-import { Badge } from '@/components/ui/badge';
+import { useHealthScore } from '@/api/hooks/use-health-score';
+import { HealthBadge } from '@/components/shared/HealthBadge';
 import {
   Table,
   TableBody,
@@ -36,7 +37,7 @@ export function ServerTable({ rows }: { rows: ReadonlyArray<TopServerRow> }): Re
                     {headers.health}
                   </span>
                 </TooltipTrigger>
-                <TooltipContent>{copy.overview.healthTooltip}</TooltipContent>
+                <TooltipContent>{copy.overview.healthTooltipUnknown}</TooltipContent>
               </Tooltip>
             </TableHead>
           </TableRow>
@@ -54,6 +55,7 @@ export function ServerTable({ rows }: { rows: ReadonlyArray<TopServerRow> }): Re
 function ServerRow({ row }: { row: TopServerRow }): React.ReactElement {
   const successRate = computeSuccessRate(row.calls, row.errors);
   const successClass = successColor(successRate);
+  const health = useHealthScore(row.server_name);
   return (
     <TableRow data-testid="server-row">
       <TableCell className="font-medium">
@@ -72,16 +74,10 @@ function ServerRow({ row }: { row: TopServerRow }): React.ReactElement {
       </TableCell>
       <TableCell className="text-right tabular-nums">{formatInt(totalTokens(row))}</TableCell>
       <TableCell className="text-right">
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <span>
-              <Badge variant="secondary" aria-label={copy.overview.healthTooltip}>
-                {copy.overview.healthPlaceholder}
-              </Badge>
-            </span>
-          </TooltipTrigger>
-          <TooltipContent>{copy.overview.healthTooltip}</TooltipContent>
-        </Tooltip>
+        <HealthBadge
+          score={health.data?.score ?? null}
+          isEssential={health.data?.is_essential ?? false}
+        />
       </TableCell>
     </TableRow>
   );

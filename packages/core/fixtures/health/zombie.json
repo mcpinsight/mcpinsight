@@ -1,0 +1,18 @@
+{
+  "scenario": "zombie-gdrive",
+  "description": "Server with total-history activity but zero calls in the 30-day window. Enough user-level history (80 total calls all-time, 90 days span) so insufficient-data does not pre-empt. Score: 0.",
+  "expected_score": 0,
+  "inputs": {
+    "server_name": "gdrive",
+    "total_calls_all_servers": 80,
+    "earliest_ts_ms": 1697472000000,
+    "calls_30d": 0,
+    "errors_30d": 0,
+    "scored_calls_30d": 0,
+    "output_tokens_30d": 0,
+    "tools_30d": [],
+    "server_project_count": 1,
+    "user_project_count": 3
+  },
+  "now_ms": 1706054400000
+}

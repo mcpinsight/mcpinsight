@@ -4,17 +4,20 @@ The local HTTP API exposed by `packages/server`. All endpoints are JSON, served 
 
 Frontend consumes from `packages/web/src/api/client.ts` (Day 20). Contract changes require a PR that updates this file and bumps `packages/server` minor version.
 
-## Status: v0.1 — Day 19 (read-only surface)
+## Status: v0.2 — Day 21 (Health Score v2 + detail fan-out)
 
-This v0.1 ships exactly what `Queries` already exposes plus thin route shims. Forward-looking endpoints (Health Score, telemetry, scan trigger) are present as **501 stubs** with a clear `code` so the React dashboard can render placeholders without a CORS/404 cliff.
+v0.2 is **additive** over v0.1: no existing field shape changes, no status codes removed.
+`GET /api/health/:name` flips from the 501 stub to a live handler per
+[ADR-0004](./adr/0004-health-score-v2.md); `GET /api/servers/:name` grows `tools`
+and populates `timeseries`. Clients written against v0.1 continue to parse.
 
-| Endpoint | v0.1 | Lands |
+| Endpoint | v0.2 | Lands |
 |---|---|---|
 | `GET /api/health` (liveness) | ✅ | Day 19 |
 | `GET /api/servers` | ✅ | Day 19 |
-| `GET /api/servers/:name` | ✅ aggregate; `timeseries: []` placeholder | Day 19 (timeseries Day 21) |
+| `GET /api/servers/:name` | ✅ with populated `timeseries` + additive `tools: string[]` | Day 21 |
 | `GET /api/clients` | ✅ | Day 19 |
-| `GET /api/health/:name` (Health Score) | 501 | Day 21 |
+| `GET /api/health/:name` (Health Score) | ✅ live | Day 21 |
 | `POST /api/scan` | 501 | Day 22 polish |
 | `POST /api/telemetry/*` | not present | Week 4 |
 
@@ -73,7 +76,7 @@ Empty DB or no calls in window → `[]` (200, not 404).
 
 ### `GET /api/servers/:name`
 
-Per-server detail. v0.1 returns the same aggregate row as `/api/servers` filtered to one server, plus a `timeseries: []` placeholder so the dashboard can render the chart slot. Day 21 populates `timeseries` and adds a `tools` breakdown.
+Per-server detail — summary + per-day timeseries + distinct tool list, all filtered to the same (`days`, `client`) window. v0.2 populates `timeseries` and adds a `tools` string array; v0.1 clients that treated `timeseries` as `[]` continue to render (the array is simply non-empty now).
 
 **Path param:**
 - `name` — URL-encoded server name (e.g. `claude_ai_Google_Drive` or `slack%20mcp`).
@@ -85,23 +88,27 @@ Per-server detail. v0.1 returns the same aggregate row as `/api/servers` filtere
 **Response 200:**
 ```json
 {
-  "server_name": "claude_ai_Google_Drive",
+  "server_name": "filesystem",
   "summary": {
-    "server_name": "claude_ai_Google_Drive",
-    "calls": 3,
-    "errors": 0,
-    "unique_tools": 2,
-    "input_tokens": 540,
-    "output_tokens": 1200,
-    "cache_read_tokens": 65606,
+    "server_name": "filesystem",
+    "calls": 412,
+    "errors": 3,
+    "unique_tools": 4,
+    "input_tokens": 88500,
+    "output_tokens": 91840,
+    "cache_read_tokens": 0,
     "cost_usd_real": 0.0,
     "cost_usd_est": 0.0
   },
-  "timeseries": []
+  "timeseries": [
+    { "day": "2026-04-20", "calls": 31, "errors": 0, "input_tokens": 6000, "output_tokens": 7100 },
+    { "day": "2026-04-21", "calls": 58, "errors": 1, "input_tokens": 12400, "output_tokens": 13900 }
+  ],
+  "tools": ["list_directory", "read_file", "search_files", "write_file"]
 }
 ```
 
-`timeseries` is **always `[]` in v0.1**. Consumers MUST tolerate the empty array and not crash; Day 21 will add objects of shape `{day: "YYYY-MM-DD", calls, errors, input_tokens, output_tokens}`.
+`timeseries` is ordered by `day` ASC. `tools` is alphabetized, case-sensitive. Both arrays scope to the same (`days`, `client`) window as `summary`.
 
 **Response 404** — server has no calls in the window (or doesn't exist at all; the two are indistinguishable by design):
 ```json
@@ -131,22 +138,55 @@ Clients with zero calls in window are dropped (matches `listClients` GROUP BY se
 { "error": { "code": "bad_request", "message": "invalid days: \"foo\"", "hint": "Expected positive integer." } }
 ```
 
-### `GET /api/health/:name` — 501 stub (Day 21)
+### `GET /api/health/:name`
 
-Health Score ships Day 21. v0.1 returns 501 so dashboard skeleton can render a placeholder card without a 404.
+Per-server Health Score per [ADR-0004](./adr/0004-health-score-v2.md). The window is fixed at 30 days server-side (algorithm constant, not caller-tunable); `?client` is the only query param that affects the response shape.
 
-**Response 501:**
+**Path param:**
+- `name` — URL-encoded server name.
+
+**Query params:**
+- `client` (optional; same enum as `/api/servers`)
+
+**Response 200 — enough data:**
 ```json
-{ "error": { "code": "not_implemented", "message": "Health Score ships Day 21", "hint": "Tracked in .claude/tasks/phase-multi-client-ui.md" } }
+{
+  "server_name": "filesystem",
+  "score": 82,
+  "components": {
+    "activation": 1.0,
+    "successRate": 0.99,
+    "toolUtil": 0.8,
+    "clarity": 1.0,
+    "tokenEff": 0.95
+  },
+  "is_essential": true
+}
 ```
 
-The Day 21 contract will be:
-```jsonc
-// 200 (enough data):
-{ "server_name": "...", "score": 82, "components": { /* 5 factors 0-1 */ }, "is_essential": true }
-// 200 (insufficient data):
-{ "server_name": "...", "score": null, "components": null, "insufficient_data_reason": "too_recent" | "too_few_calls" }
+`score` is an integer in `[0, 100]`. `components` values are floats in `[0, 1]` — the pre-weighting factor values. Clients can recompute the weighted sum locally using the weights in ADR-0004 (`activation 30% · successRate 30% · toolUtil 20% · clarity 10% · tokenEff 10%`).
+
+**Response 200 — insufficient user-level data:**
+```json
+{
+  "server_name": "filesystem",
+  "score": null,
+  "components": null,
+  "is_essential": false,
+  "insufficient_data_reason": "too_recent"
+}
 ```
+
+`insufficient_data_reason` is one of `"too_recent"` (< 14 days of history) or `"too_few_calls"` (< 50 total calls across all servers). `is_essential` remains informative even on the insufficient-data path.
+
+**Response 404 — server never seen:**
+```json
+{ "error": { "code": "not_found", "message": "no calls recorded for server \"foo\"", "hint": "Run `mcpinsight scan` to ingest sessions, then retry." } }
+```
+
+404 fires only when the named server has zero lifetime calls (or no lifetime calls under the client filter). A server with history but zero calls in the 30-day window returns **200** with `score: 0` — the zombie signal.
+
+**Response 400 — invalid client:** same `bad_request` envelope as `/api/servers`.
 
 ### `POST /api/scan` — 501 stub (Day 22 polish)
 

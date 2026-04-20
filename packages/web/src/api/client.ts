@@ -1,5 +1,5 @@
-import type { Client } from '@mcpinsight/core/types';
 import type { ClientListRow, TopServerRow } from '@mcpinsight/core';
+import type { Client, ServerHealth } from '@mcpinsight/core/types';
 
 /**
  * Shape of the `{error: {code, message, hint?}}` envelope from
@@ -91,16 +91,20 @@ async function safeEnvelope(res: Response): Promise<ApiErrorEnvelope> {
   };
 }
 
+export interface TimeseriesPoint {
+  day: string;
+  calls: number;
+  errors: number;
+  input_tokens: number;
+  output_tokens: number;
+}
+
 export interface ServerDetailResponse {
   server_name: string;
   summary: TopServerRow;
-  timeseries: ReadonlyArray<{
-    day: string;
-    calls: number;
-    errors: number;
-    input_tokens: number;
-    output_tokens: number;
-  }>;
+  timeseries: ReadonlyArray<TimeseriesPoint>;
+  /** Day 21 additive: distinct tool names observed in window, alphabetized. */
+  tools: ReadonlyArray<string>;
 }
 
 export const api = {
@@ -128,5 +132,17 @@ export const api = {
 
   clients(params?: { days?: number; limit?: number }): Promise<ClientListRow[]> {
     return req<ClientListRow[]>(`/api/clients${qs(params)}`);
+  },
+
+  /**
+   * Health Score v2 — per-server. 30-day window fixed server-side (ADR-0004);
+   * the `client` param is the only caller-tunable knob.
+   */
+  healthScore(name: string, params?: { client?: Client | 'all' }): Promise<ServerHealth> {
+    return req<ServerHealth>(
+      `/api/health/${encodeURIComponent(name)}${qs({
+        client: params?.client === 'all' ? undefined : params?.client,
+      })}`,
+    );
   },
 };

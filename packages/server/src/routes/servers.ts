@@ -10,16 +10,12 @@ const DEFAULT_DAYS = 7;
 const DEFAULT_LIMIT = 20;
 
 /**
- * Day 19 thin shim: per-server detail uses `topServers` with a generous limit
- * and filters clientside, since `Queries.topServers` doesn't accept a
- * server_name filter today and `/:name` is low-traffic (single-server view).
- *
- * Day 21 (Health Score) introduces `Queries.getServerDetail(name, sinceMs)`
- * that returns `{summary, timeseries, tools}` in one shot — at which point
- * this scan cap is removed.
+ * `GET /api/servers` — top-N roll-up. `GET /api/servers/:name` — per-server
+ * detail: summary + daily timeseries + distinct tool list, all filtered to the
+ * same (days, client) window. The detail path fans out via a single
+ * `queries.getServerDetail` call (retired the Day 19 `DETAIL_SCAN_CAP`
+ * clientside filter in favor of a purpose-built query).
  */
-const DETAIL_SCAN_CAP = 10_000;
-
 export function serversRoutes(deps: Deps): Hono {
   const r = new Hono();
 
@@ -37,15 +33,19 @@ export function serversRoutes(deps: Deps): Hono {
     const days = parsePositiveInt(c.req.query('days'), 'days', DEFAULT_DAYS);
     const client = parseClient(c.req.query('client'));
     const sinceMs = deps.clock.now() - days * DAY_MS;
-    const all = deps.queries.topServers({ sinceMs, client, limit: DETAIL_SCAN_CAP });
-    const summary = all.find((row) => row.server_name === name);
-    if (summary === undefined) {
+    const detail = deps.queries.getServerDetail({ name, sinceMs, client });
+    if (detail.summary === null) {
       throw new NotFoundError(
         `no calls recorded for server "${name}" in the last ${days} day(s)`,
         'Try a wider days window, or run `mcpinsight scan`.',
       );
     }
-    return c.json({ server_name: name, summary, timeseries: [] });
+    return c.json({
+      server_name: name,
+      summary: detail.summary,
+      timeseries: detail.timeseries,
+      tools: detail.tools,
+    });
   });
 
   return r;

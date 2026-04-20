@@ -45,9 +45,24 @@ export type {
   ClientListRow,
   Queries,
   ScanStateRow,
+  ServerDetailResult,
   ServerListRow,
+  TimeseriesRow,
   TopServerRow,
 } from './db/queries.js';
+export {
+  ACTIVATION_SATURATION,
+  ESSENTIAL_FLOOR,
+  ESSENTIAL_THRESHOLD,
+  MIN_DAYS_HISTORY,
+  MIN_TOTAL_CALLS,
+  TOKEN_EFF_CAP,
+  TOOLUTIL_SATURATION,
+  WEIGHTS,
+  calculateToolConfusion,
+  computeHealthScore,
+} from './health/index.js';
+export type { ServerHealthInputs } from './health/index.js';
 export { ingestCalls, isoDay, SELF_REFERENCE_SERVERS } from './aggregator/ingest.js';
 export type { IngestStats } from './aggregator/ingest.js';
 export {
