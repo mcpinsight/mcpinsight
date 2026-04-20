@@ -17,6 +17,24 @@ export type ProjectIdentity = Brand<string, 'ProjectIdentity'>;
 export type Client = 'claude-code' | 'codex' | 'cursor' | 'windsurf' | 'copilot';
 
 /**
+ * Every valid `Client` id, in canonical order. Consumers that need a list of
+ * options (a CLI flag validator, a dashboard dropdown) MUST import this
+ * rather than inlining the tuple — changing the set of supported clients is a
+ * single-file edit.
+ *
+ * `as const` locks the array's element type to the `Client` literal union —
+ * the redundant `satisfies` sanity-checks that every member is in fact a
+ * `Client`, so a typo at add-time fails the compile rather than the runtime.
+ */
+export const CLIENT_IDS = [
+  'claude-code',
+  'codex',
+  'cursor',
+  'windsurf',
+  'copilot',
+] as const satisfies ReadonlyArray<Client>;
+
+/**
  * The canonical event: one MCP tool call, normalized across all clients.
  *
  * `is_error: null` means "unknowable" (compacted session, no matching tool_result).

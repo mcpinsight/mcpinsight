@@ -8,6 +8,12 @@ export interface StartServerOptions {
   port?: number;
   /** Host to bind. Defaults to `127.0.0.1` (INV-07 — keep on loopback). */
   host?: string;
+  /**
+   * Optional absolute path to `packages/web/dist/`. When supplied, the SPA
+   * is served alongside the API from the same origin — see
+   * `middleware/static-spa.ts`.
+   */
+  webDistDir?: string;
 }
 
 export interface RunningServer {
@@ -26,7 +32,9 @@ export interface RunningServer {
  * through Hono's `onError` middleware (see `middleware/error.ts`).
  */
 export function startServer(deps: Deps, options: StartServerOptions = {}): Promise<RunningServer> {
-  const app = createApp(deps);
+  const app = createApp(deps, {
+    ...(options.webDistDir !== undefined ? { webDistDir: options.webDistDir } : {}),
+  });
   const port = options.port ?? 0;
   const host = options.host ?? '127.0.0.1';
 

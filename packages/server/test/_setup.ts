@@ -8,7 +8,7 @@ import {
 } from '@mcpinsight/core';
 import type { Client, Logger, McpCall, Queries } from '@mcpinsight/core';
 
-import { createApp } from '../src/app.js';
+import { type CreateAppOptions, createApp } from '../src/app.js';
 import type { Deps } from '../src/types.js';
 
 /**
@@ -53,6 +53,7 @@ export interface SetupOptions {
   seed?: ReadonlyArray<McpCall>;
   nowMs?: number;
   logger?: Logger;
+  appOptions?: CreateAppOptions;
 }
 
 export const FIXED_NOW = Date.UTC(2026, 3, 16, 0, 0, 0); // 2026-04-16 00:00 UTC
@@ -69,7 +70,7 @@ export function setup(options: SetupOptions = {}): TestHarness {
     clock: { now: () => options.nowMs ?? FIXED_NOW },
     logger,
   };
-  const app = createApp(deps);
+  const app = createApp(deps, options.appOptions);
   return {
     app,
     queries,
