@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { Command } from 'commander';
 
+import { registerClientsCommand } from './commands/clients.js';
 import { registerScanCommand } from './commands/scan.js';
 import { registerServersCommand } from './commands/servers.js';
 import { registerTopCommand } from './commands/top.js';
@@ -22,6 +23,7 @@ program
 registerScanCommand(program);
 registerTopCommand(program);
 registerServersCommand(program);
+registerClientsCommand(program);
 
 program.parseAsync().catch((err) => {
   process.stderr.write(`${String(err)}\n`);

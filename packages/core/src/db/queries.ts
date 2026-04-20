@@ -45,6 +45,24 @@ export interface ServerListRow {
   clients: string;
 }
 
+/**
+ * One row of the `clients` CLI listing — per-client activity breakdown.
+ *
+ * Rows reflect calls within a trailing window (`days`); self-reference servers
+ * are excluded so a single self-hosted mcpinsight server doesn't inflate the
+ * Claude Code count (INV-04). `first_ts` / `last_ts` are unix-ms boundaries
+ * of observed activity within the same window — `null` if the client has no
+ * calls in window (currently never returned; groups with zero calls are
+ * dropped by `GROUP BY client`).
+ */
+export interface ClientListRow {
+  client: string;
+  calls: number;
+  servers: number;
+  first_ts: number;
+  last_ts: number;
+}
+
 export interface Queries {
   insertCall(call: McpCall): void;
   upsertServerStatDaily(row: ServerStatDaily): void;
@@ -58,6 +76,8 @@ export interface Queries {
   }): void;
   topServers(opts: { sinceMs: number; client: Client | null; limit: number }): TopServerRow[];
   listServers(opts: { windowSinceMs: number }): ServerListRow[];
+  listClients(opts: { sinceMs: number }): ClientListRow[];
+  countCallsByClient(client: Client): number;
   getScanState(filePath: string): ScanStateRow | null;
   upsertScanState(row: ScanStateRow): void;
 }
@@ -154,6 +174,29 @@ export function createQueries(db: Database): Queries {
     ORDER BY last_activity_ms DESC
   `);
 
+  // INV-04 again: self-reference excluded so the mcpinsight MCP server (when
+  // used) doesn't dominate the Claude Code row and distort activity signal.
+  const listClients = db.prepare(`
+    SELECT
+      client,
+      COUNT(*) AS calls,
+      COUNT(DISTINCT server_name) AS servers,
+      MIN(ts) AS first_ts,
+      MAX(ts) AS last_ts
+    FROM mcp_calls
+    WHERE ts >= @since_ms
+      AND server_name NOT IN (${selfRefList})
+    GROUP BY client
+    ORDER BY calls DESC
+  `);
+
+  // Unfiltered — used by `scan` for the summary line. Self-reference IS
+  // included here because the summary reports physical rows ingested; the
+  // INV-04 exclusion only applies to ranking/aggregation queries.
+  const countCallsByClient = db.prepare(`
+    SELECT COUNT(*) AS n FROM mcp_calls WHERE client = ?
+  `);
+
   const getScanStateStmt = db.prepare(`
     SELECT file_path, last_byte_offset, last_scanned_at, client
       FROM scan_state
@@ -232,6 +275,15 @@ export function createQueries(db: Database): Queries {
           .sort()
           .join(','),
       }));
+    },
+
+    listClients({ sinceMs }) {
+      return listClients.all({ since_ms: sinceMs }) as ClientListRow[];
+    },
+
+    countCallsByClient(client) {
+      const row = countCallsByClient.get(client) as { n: number } | undefined;
+      return row?.n ?? 0;
     },
 
     getScanState(filePath) {
