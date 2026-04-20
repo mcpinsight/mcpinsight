@@ -6,7 +6,7 @@ export const copy = {
   meta: {
     title: 'MCPInsight — Analytics for MCP servers in Claude Code, Codex, Cursor',
     description:
-      'Your MCP servers slow your agents down. You do not know which. MCPInsight reads the logs you already have.',
+      'Which MCP server is eating your context? MCPInsight reads your Claude Code, Codex, and Cursor logs. Local, open source, ~60 seconds to first insight.',
   },
   nav: {
     brand: 'MCPInsight',
@@ -15,16 +15,16 @@ export const copy = {
     primaryCtaLabel: 'Notify me',
   },
   hero: {
-    eyebrow: 'Building in public · Week 1 of 6',
-    headline: "Your MCP servers slow your agents down. You don't know which.",
+    eyebrow: 'Building in public · Week 3 of 6',
+    headline: 'Which MCP server is eating your context?',
     subhead:
-      'Analytics for MCP servers in Claude Code, Codex, and Cursor. Spot noisy servers, wasted calls, and context bloat.',
+      'MCPInsight reads your Claude Code, Codex, and Cursor logs, then tells you which servers earn their slot — and which to kill. Local, open source, ~60 seconds to first insight.',
     proofLinkLabel: 'Open source on GitHub',
   },
   waitlist: {
     emailLabel: 'Email address',
     emailPlaceholder: 'you@company.dev',
-    submit: 'Get early access',
+    submit: 'Get early access — launches Week 4',
     privacy: 'We email you when we launch. No spam, unsubscribe anytime.',
     errorInvalid: 'Please enter a valid email address.',
     errorGeneric: 'Something went wrong. Please try again in a moment.',
@@ -66,9 +66,9 @@ export const copy = {
     subhead:
       'Code, roadmap, and commit log are public from day one. Starring the repo is the cheapest way to keep tabs.',
     roadmap: [
-      { week: 'Week 1', title: 'Landing + waitlist', status: 'current' },
-      { week: 'Week 2', title: 'Parser + CLI top', status: 'upcoming' },
-      { week: 'Week 3', title: 'Dashboard + Codex parser', status: 'upcoming' },
+      { week: 'Week 1', title: 'Landing + waitlist', status: 'done' },
+      { week: 'Week 2', title: 'Parser + CLI top', status: 'done' },
+      { week: 'Week 3', title: 'Dashboard + Codex parser', status: 'current' },
       { week: 'Week 4', title: 'Licensing + telemetry', status: 'upcoming' },
       { week: 'Week 5', title: 'Launch + State of MCP', status: 'upcoming' },
       { week: 'Week 6', title: 'Team tier + Cursor', status: 'upcoming' },

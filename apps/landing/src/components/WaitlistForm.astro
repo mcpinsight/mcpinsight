@@ -133,6 +133,7 @@ const errorId = `${formId}-error`;
         }
         main.hidden = true;
         success.hidden = false;
+        if (typeof window.plausible === 'function') window.plausible('Waitlist');
       } catch {
         showError(errorGeneric);
         if (submitBtn) submitBtn.disabled = false;
